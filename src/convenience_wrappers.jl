@@ -8,8 +8,7 @@ export mumps_solve!, mumps_solve,
 mumps_factorize!, mumps_factorize,
 mumps_det!, mumps_det,
 mumps_schur!, mumps_schur,
-mumps_select_inv!, mumps_select_inv,
-mumps_inv
+mumps_select_inv!, mumps_select_inv
 
 
 """
@@ -280,31 +279,6 @@ function mumps_select_inv(A,I::AbstractArray{Int},J::AbstractArray{Int})
 end
 
 
-"""
-    mumps_inv(A) -> A⁻¹, mumps
-
-compute LU factorization of A and return a Linear Map
-equavalent to inv(A), as defined by their action on a
-vector. Notably, A⁻¹ is not a matrix, and its elements
-cannot be accessed directly.
-"""
-function mumps_inv(A)
-    mumps = Mumps(A)
-    if mumps.sym==1
-        sym=true
-        posdef=true
-    elseif mumps.sym==2
-        sym=true
-        posdef=false
-    else
-        sym=false
-        posdef=false
-    end
-    A⁻¹ = LinearMap{eltype(A)}((y,x)->mumps_solve!(y,mumps,x),convert(Int,mumps.n), ismutating=true, issymmetric=sym, isposdef=posdef)
-    return A⁻¹, mumps
-end
-
-
 
 function Base.:\(mumps::Mumps,y)
     suppress_display!(mumps)
@@ -338,3 +312,32 @@ function LinearAlgebra.inv(mumps::Mumps)
     finalize(mumps)
     return y
 end
+
+
+
+
+
+#
+# """
+#     mumps_inv(A) -> A⁻¹, mumps
+#
+# compute LU factorization of A and return a Linear Map
+# equavalent to inv(A), as defined by their action on a
+# vector. Notably, A⁻¹ is not a matrix, and its elements
+# cannot be accessed directly.
+# """
+# function mumps_inv(A)
+#     mumps = Mumps(A)
+#     if mumps.sym==1
+#         sym=true
+#         posdef=true
+#     elseif mumps.sym==2
+#         sym=true
+#         posdef=false
+#     else
+#         sym=false
+#         posdef=false
+#     end
+#     A⁻¹ = LinearMap{eltype(A)}((y,x)->mumps_solve!(y,mumps,x),convert(Int,mumps.n), ismutating=true, issymmetric=sym, isposdef=posdef)
+#     return A⁻¹, mumps
+# end

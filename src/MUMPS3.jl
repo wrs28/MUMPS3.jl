@@ -17,10 +17,8 @@ and right hand sides directly, so, for example, the equation `A*x=y`, solved
 in Base by `x=A\\y` or `LinearAlbegra.ldiv!(x,A,y)`, can be solved in MUMPS3
 as `x=mumps_solve(A,y)`, or `mumps_solve!(x,A,y)`.
 
-The package also extends Base.\\, LinearAlgebra.ldiv! and LinearAlgebra.inv to
-work with mumps objects. Finally, the function `mumps_inv(A)` returns a Linear Map
-that has the same action on vectors as A⁻¹. Think of it as the counterpart
-to an UMFPACK LU factorization object used in left division.
+The package also extends Base.det, Base.\\, LinearAlgebra.ldiv! and LinearAlgebra.inv to
+work with mumps objects.
 
 Note, unless working with the low-level interace, I discourage setting the JOB
 parameter manually, as this can lead to unsafe operation.
