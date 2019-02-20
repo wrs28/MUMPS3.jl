@@ -1,17 +1,11 @@
+# this file mirros the relevant content of the "[sdcz]mumps_c.h" file of MUMPS 5.1.2
+
 export Mumps
 
 const MUMPS_VERSION = "5.1.2"
 const MUMPS_VERSION_MAX_LEN = 30
 
-function Base.real(T::TypeVar)
-    if T<:Number
-        return real(T)
-    else
-        throw(ArgumentError("real not defined for type $T"))
-    end
-end
-
-mutable struct Mumps{TR,TC}
+mutable struct Mumps{TC,TR}
     sym::MUMPS_INT # MANDATORY 0 for unsymmetric, 1 for symmetric and posdef, 2 for general symmetric. All others treated as 0
     par::MUMPS_INT # MANDATORY 0 host not involved in parallel factorization and solve, 1 host is involved
     job::MUMPS_INT # MANDATORY -1 initializes package, must come first, -2 terminates, 1 analysis, 2 factorization, 3 solve, 4=1&2, 5=2&3, 6=1&2&3
@@ -98,6 +92,16 @@ mutable struct Mumps{TR,TC}
     save_prefix ::NTuple{256,Cchar}
 
     function Mumps{Tv}(sym,par,comm) where Tv
-        new{real(Tv),Tv}(sym,par,-1,comm)
+        new{Tv,real(Tv)}(sym,par,-1,comm)
+    end
+end
+
+
+# this is necessary to make the call "real(TV)" work in the inner constructor for Mumps above
+function Base.real(T::TypeVar)
+    if T<:Number
+        return real(T)
+    else
+        throw(ArgumentError("real not defined for type $T"))
     end
 end

@@ -1,1 +1,1 @@
-mumps_lib = "/usr/local/lib/libmumps_simple.dylib"
+const MUMPS_LIB = "/usr/local/opt/brewsci-mumps/lib/libmumps_simple.dylib"
