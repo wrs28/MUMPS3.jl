@@ -29,7 +29,7 @@ The goal is to give the advanced user low-level access to MUMPS, while simultane
 giving the ordinary user safe functions that grant access to most of what
 MUMPS has to offer.
 """
-module MUMPS_wrs
+module MUMPS3
 
 using MPI,
 LinearAlgebra,
