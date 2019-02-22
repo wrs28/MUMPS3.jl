@@ -247,11 +247,11 @@ See also: [`get_rhs!`](@ref), [`get_sol!`](@ref), [`get_sol`](@ref)
 """
 function get_rhs(mumps::Mumps{T}) where T
     n = mumps.mumpsc.nrhs
-    if is_rhs_dense(mumps)
+    if !is_rhs_dense(mumps)
         m = mumps.mumpsc.n
         colptr = ones(MUMPS_INT,mumps.mumpsc.nrhs+1)
         rowval = ones(MUMPS_INT,mumps.mumpsc.nz_rhs)
-        nzval = Array{TC}(undef,mumps.mumpsc.nz_rhs)
+        nzval = Array{T}(undef,mumps.mumpsc.nz_rhs)
         x = SparseMatrixCSC(m,n,colptr,rowval,nzval)
     else
         m = mumps.mumpsc.lrhs
