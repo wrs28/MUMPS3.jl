@@ -40,7 +40,7 @@ export invoke_mumps!
 
 function __init__()
     if haskey(ENV,"MUMPS_PREFIX")
-        global MUMPS_LIB = joinpath(ENV["MUMPS_PREFIX"],"libmumps_simple.dylib")
+        global MUMPS_LIB = joinpath(ENV["MUMPS_PREFIX"],"lib/libmumps_simple.dylib")
     else
         global MUMPS_LIB = "/usr/local/opt/brewsci-mumps/lib/libmumps_simple.dylib"
     end
