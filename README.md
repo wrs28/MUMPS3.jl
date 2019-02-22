@@ -54,3 +54,7 @@ MPI.Initialized() ? nothing : MPI.Init()
 MPI.finalize_atexit()
 ````
 at the top of your code.
+
+Now you are poised to begin.
+
+There are five high-level functions that use the [MUMPS library](http://mumps.enseeiht.fr): `mumps_solve`, `mumps_factorize`, `mumps_det`, `mumps_schur`, `mumps_select_inv`. The first three are self-explanatory, and last two 
