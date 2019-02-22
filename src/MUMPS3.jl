@@ -36,8 +36,6 @@ Libdl,
 LinearAlgebra,
 SparseArrays
 
-export invoke_mumps!
-
 function __init__()
     if haskey(ENV,"MUMPS_PREFIX")
         global MUMPS_LIB = joinpath(ENV["MUMPS_PREFIX"],"lib/libmumps_simple.dylib")

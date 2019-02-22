@@ -3,8 +3,8 @@
 # Many functions are unsafe and are marked as such.
 # None of these functions change the JOB parameter.
 
-export invoke_mumps_unsafe!, invoke_mumps!,
-set_icntl!,
+export invoke_mumps!,
+set_icntl!, set_job!,
 provide_matrix!,
 provide_rhs!,
 get_rhs!, get_rhs,
@@ -77,6 +77,9 @@ function set_icntl!(mumps::Mumps,i::Int,val::Int; displaylevel=mumps.mumpsc.icnt
     displaylevel>0 ? display_icntl(mumps.mumpsc.icntl,i,val) : nothing
     return nothing
 end
+
+
+set_job!(mumps::Mumps,i) = mumps.mumpsc.job=i
 
 
 """
