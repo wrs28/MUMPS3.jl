@@ -34,7 +34,6 @@ module MUMPS3
 using MPI,
 Libdl,
 LinearAlgebra,
-LinearMaps,
 SparseArrays
 
 export invoke_mumps!
