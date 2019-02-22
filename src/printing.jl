@@ -1,6 +1,8 @@
 export display_icntl
 
-function Base.show(io::IO,mumps::Mumps{TC,TR}) where {TC,TR}
+Base.show(io::IO,mumps::Mumps) = show(mumps.mumpsc)
+
+function Base.show(io::IO,mumpsc::MumpsC{TC,TR}) where {TC,TR}
     print("Mumps{$TC,$TR}: ")
     if TC<:Float32
         println("single precision real")
@@ -16,55 +18,55 @@ function Base.show(io::IO,mumps::Mumps{TC,TR}) where {TC,TR}
         lib = "zmumps"
     end
     println("lib: ", lib)
-    print("job: ", mumps.job, " ")
-    if mumps.job==-2
+    print("job: ", mumpsc.job, " ")
+    if mumpsc.job==-2
         println("terminate")
-    elseif mumps.job==-1
+    elseif mumpsc.job==-1
         println("initialize")
-    elseif mumps.job==1
+    elseif mumpsc.job==1
         println("analyze")
-    elseif mumps.job==2
+    elseif mumpsc.job==2
         println("factorize")
-    elseif mumps.job==3
+    elseif mumpsc.job==3
         println("solve")
-    elseif mumps.job==4
+    elseif mumpsc.job==4
         println("analyze + factorize")
-    elseif mumps.job==5
+    elseif mumpsc.job==5
         println("factorize + solve")
-    elseif mumps.job==6
+    elseif mumpsc.job==6
         println("analyze + factorize + solve")
     else
         println("unrecognized")
     end
-    print("sym: ", mumps.sym)
-    if mumps.sym==1
+    print("sym: ", mumpsc.sym)
+    if mumpsc.sym==1
         println(" symmetric pos def")
-    elseif mumps.sym==2
+    elseif mumpsc.sym==2
         println(" symmetric")
     else
         println(" unsymmetric")
     end
-    print("par: ", mumps.par)
-    mumps.par==0 ? println(" host not worker") : println(" host is worker ")
+    print("par: ", mumpsc.par)
+    mumpsc.par==0 ? println(" host not worker") : println(" host is worker ")
     print("matrix A: ")
-    if has_matrix(mumps)
-        print("$(mumps.n)×$(mumps.n) ")
-        if mumps.icntl[5]==1
-            print("elemental matrix with $(mumps.nelt) element")
-            mumps.nelt>1 ? println("s") : println()
+    if has_matrix(mumpsc)
+        print("$(mumpsc.n)×$(mumpsc.n) ")
+        if is_matrix_assembled(mumpsc)
+            println("sparse matrix, with $(mumpsc.nnz) nonzero elements")
         else
-            println("sparse matrix, with $(mumps.nnz) nonzero elements")
+            print("elemental matrix with $(mumpsc.nelt) element")
+            mumpsc.nelt>1 ? println("s") : println()
         end
     else
         println("uninitialized")
     end
 
     print("rhs B:")
-    rhs_type = mumps.icntl[20]==0 ? "dense" : "sparse"
-    nz_rhs = mumps.icntl[20]==0 ? "" : string(",with ",mumps.nz_rhs," nonzero elements")
-    if has_rhs(mumps)
-        lrhs = mumps.icntl[20]==0 ? mumps.lrhs : mumps.n
-        nrhs = mumps.nrhs
+    rhs_type = is_rhs_dense(mumpsc) ? "dense" : "sparse"
+    nz_rhs = is_rhs_dense(mumpsc) ? "" : string(",with ",mumpsc.nz_rhs," nonzero elements")
+    if has_rhs(mumpsc)
+        lrhs = is_rhs_dense(mumpsc) ?  mumpsc.lrhs : mumpsc.n
+        nrhs = mumpsc.nrhs
         println(" $lrhs×$nrhs ",rhs_type," matrix", nz_rhs)
     else
         println(" uninitialized")
@@ -74,17 +76,48 @@ function Base.show(io::IO,mumps::Mumps{TC,TR}) where {TC,TR}
     icntl_inds = [4,9,13,19,30,33]
     for i ∈ eachindex(icntl_inds)
         print("\t")
-        display_icntl(mumps.icntl,icntl_inds[i],mumps.icntl[icntl_inds[i]])
+        display_icntl(mumpsc.icntl,icntl_inds[i],mumpsc.icntl[icntl_inds[i]])
     end
 end
 
+function Base.show(io::IO,gc_haven::GC_haven)
+    vars = (:irn,:jcn,:a,
+            :irn_loc,:jcn_loc,:a_loc,
+            :eltptr,:eltvar,:a_elt,
+            :perm_in,:sym_in,:uns_in,
+            :colsca, :rowsca,
+            :rhs, :redrhs, :rhs_sparse,
+            :sol_loc, :irhs_sparse,
+            :irhs_ptr, :isol_loc,
+            :pivnul_list, :mapping,
+            :listvar_schur, :schur, :wk_user)
+    pad = ("::\t",":\t",":\t\t",
+            ": ","\t",":\t",
+            ":\t","\t",":\t",
+            ": ","\t",":\t",
+            ":\t",":\t",
+            ":\t",":\t",":\t",
+            ": ",": ",
+            ": ",": ",
+            ": ",": ",
+            ": ",":\t",": ")
+    for i ∈ eachindex(vars)
+        println(vars[i],pad[i],isdefined(gc_haven,vars[i]))
+    end
+end
 
-display_icntl(mumps::Mumps) = display_icntl(mumps.icntl)
+"""
+    display_icntl(mumps)
+
+Show the complete INCTL integer array of `mumps`, with descriptions
+
+See also: [`set_icntl!`](@ref)
+"""
+display_icntl(mumps::Mumps) = display_icntl(mumps.mumpsc.icntl)
 function display_icntl(icntl)
     for i ∈ eachindex(icntl)
         display_icntl(icntl,i,icntl[i])
     end
-    return nothing
 end
 function display_icntl(icntl,i,val)
     automatic = "decided by software"
@@ -379,6 +412,6 @@ function display_icntl(icntl,i,val)
     else
         print("not used")
     end
-
     print("\n")
+    return nothing
 end
