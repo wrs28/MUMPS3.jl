@@ -86,16 +86,13 @@ function mumps_solve!(x::Array,mumps::Mumps)
     @assert has_matrix(mumps) "matrix not yet provided to mumps object"
     @assert has_rhs(mumps) "rhs not yet provided to mumps object"
     if mumps.mumpsc.job ∈ [2,4] # if already factored, just solve
-        set_icntl!(mumps,7,0) # for now can't leave up to system because it could choose METIS (option 5) which has issues with the current build of mumps from brew (as of Feb 10 2019)
         mumps.mumpsc.job = 3
     elseif mumps.mumpsc.job ∈ [1] # if analyzed only, factorize and solve
-        set_icntl!(mumps,7,0) # for now can't leave up to system because it could choose METIS (option 5) which has issues with the current build of mumps from brew (as of Feb 10 2019)
         mumps.mumpsc.job=5
     elseif mumps.mumpsc.job ∈ [3,5,6] # is solved already, retrieve solution
         get_sol!(x,mumps)
         return nothing
     else # else analyze, factor, solve
-        set_icntl!(mumps,7,0) # for now can't leave up to system because it could choose METIS (option 5) which has issues with the current build of mumps from brew (as of Feb 10 2019)
         mumps.mumpsc.job=6
     end
     invoke_mumps!(mumps)
@@ -161,7 +158,6 @@ See also: [`mumps_factorize`](@ref)
 """
 function mumps_factorize!(mumps::Mumps)
     @assert has_matrix(mumps) "matrix not yet provided to mumps object"
-    set_icntl!(mumps,7,0) # for now can't leave up to system because it could choose METIS (option 5) which has issues with the current build of mumps from brew (as of Feb 10 2019)
     if mumps.mumpsc.job ∈ [2,3,4,5,6] # already factored
         @warn "already factored"
         return nothing
@@ -243,7 +239,6 @@ See also: [`mumps_schur`](@ref), [`get_schur!`](@ref), [`get_schur`](@ref)
 function mumps_schur!(mumps::Mumps, schur_inds::AbstractArray{Int,1})
     @assert has_matrix(mumps) "matrix not yet provided to mumps object"
     set_schur_centralized_by_column!(mumps, schur_inds)
-    set_icntl!(mumps,7,0) # for now can't leave up to system because it could choose METIS (option 5) which has issues with the current build of mumps from brew (as of Feb 10 2019)
     if mumps.mumpsc.job ∈ [1] # if analyzed only, factorize
         mumps.mumpsc.job=2
     else # else analyze, factor
@@ -289,13 +284,10 @@ function mumps_select_inv!(x::AbstractSparseArray,mumps::Mumps)
     set_icntl!(mumps,20,3)
     provide_rhs!(mumps,x)
     if mumps.mumpsc.job ∈ [2,4] # if already factored, just solve
-        set_icntl!(mumps,7,0) # for now can't leave up to system because it could choose METIS (option 5) which has issues with the current build of mumps from brew (as of Feb 10 2019)
         mumps.mumpsc.job = 3
     elseif mumps.mumpsc.job ∈ [1] # if analyzed only, factorize and solve
-        set_icntl!(mumps,7,0) # for now can't leave up to system because it could choose METIS (option 5) which has issues with the current build of mumps from brew (as of Feb 10 2019)
         mumps.mumpsc.job=5
     else # else analyze, factor, solve
-        set_icntl!(mumps,7,0) # for now can't leave up to system because it could choose METIS (option 5) which has issues with the current build of mumps from brew (as of Feb 10 2019)
         mumps.mumpsc.job=6
     end
     invoke_mumps!(mumps)
