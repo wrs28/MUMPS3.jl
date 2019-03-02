@@ -42,6 +42,7 @@ function __init__()
     else
         global MUMPS_LIB = "/usr/local/opt/brewsci-mumps/lib/libmumps_simple.dylib"
     end
+    global LIB = dlopen(MUMPS_LIB)
 end
 
 include("mumps_types.jl")

@@ -38,9 +38,8 @@ function invoke_mumps_unsafe!(mumpsc::MumpsC{TC,TR}) where {TC,TR}
     elseif TC==ComplexF64
         cfun = :zmumps_c
     end
-    lib = dlopen(MUMPS_LIB)
-    sym = dlsym(lib,cfun)
-    @eval ccall($(sym), Cvoid, (Ref{MumpsC{$TC,$TR}},), $(mumpsc))
+    sym = dlsym(LIB,cfun)
+    ccall(sym,Cvoid,(Ref{MumpsC{TC,TR}},), mumpsc)
     return nothing
 end
 """

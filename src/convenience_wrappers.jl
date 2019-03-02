@@ -56,6 +56,7 @@ function Mumps(A::AbstractArray{T}, rhs::AbstractArray{TA}; kwargs...) where {T,
         end
     end
     mumps = Mumps{promote_type(T,TA)}(;kwargs...)
+    suppress_display!(mumps)
     typeof(A)<:Array ? set_icntl!(mumps,5,1) : nothing
     provide_matrix!(mumps,A)
     if typeof(rhs)<:SparseMatrixCSC
@@ -132,13 +133,19 @@ function mumps_solve(mumps::Mumps)
     mumps_solve!(x,mumps)
     return x
 end
-function mumps_solve(A::AbstractArray,rhs::AbstractArray)
-    x = convert(Matrix,rhs)
+function mumps_solve(A::AbstractArray,rhs::AbstractArray{T,N}) where {T,N}
+    if N==1
+        x = copy(convert(Vector,rhs))
+    elseif N==2
+        x = copy(convert(Matrix,rhs))
+    else
+        throw(ArgumentError("unrecognized rhs dimension $N"))
+    end
     mumps_solve!(x,A,rhs)
     return x
 end
 function mumps_solve(mumps::Mumps,rhs::AbstractArray)
-    x = convert(Matrix,rhs)
+    x = copy(convert(Matrix,rhs))
     mumps_solve!(x,mumps,rhs)
     return x
 end
