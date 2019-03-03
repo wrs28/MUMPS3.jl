@@ -32,8 +32,6 @@ If not arguments are passed, create an initialized but empty instance of `Mumps`
 Mumps{T}(;sym=0,par=1) where T = Mumps{T}(sym,par,MPI.COMM_WORLD.val)
 function Mumps(A::AbstractArray{T}; kwargs...) where T
     if !haskey(kwargs,:sym)
-        # if issymmetric(A) && isposdef(A)
-            # kwargs = (kwargs...,:sym => 1)
         if issymmetric(A)
             kwargs = (kwargs...,:sym => 2)
         else
@@ -47,9 +45,6 @@ function Mumps(A::AbstractArray{T}; kwargs...) where T
 end
 function Mumps(A::AbstractArray{T}, rhs::AbstractArray{TA}; kwargs...) where {T,TA}
     if !haskey(kwargs,:sym)
-        # if issymmetric(A) && isposdef(A)
-            # kwargs = (kwargs...,:sym => 1)
-            # kwargs = (kwargs...,:sym => 2) # FOR SOME REASON POSDEF MATRICES CAN COME UP SINGULAR...
         if issymmetric(A)
             kwargs = (kwargs...,:sym => 2)
         else
