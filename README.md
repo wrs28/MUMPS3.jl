@@ -11,7 +11,7 @@ The goal of this package is to provide simultaneously the full functionality and
 This is done by providing a Julia structure `MumpsC{T}` which exactly matches the [SDCZ]MUMPS_STRUC_C used inside MUMPS 5.1.2, which is then passed to the MUMPS library. In fact this structure is itself wrapped inside another Julia structure `Mumps{T}` for the purposes of [protecting the memory used by C from Julia's garbage collection](https://docs.julialang.org/en/v1/manual/calling-c-and-fortran-code/#Garbage-Collection-Safety-1). This `Mumps{T}` structure is what is exposed to the user.
 
 ##### Name
-There are already two MUMPS pacakages called [MUMPS.jl](https://github.com/JuliaSparse/MUMPS.jl) and [MUMPS.jl](https://github.com/JuliaSmoothOptimizers/MUMPS.jl), which seemed a bit crowded to me. I considered [MMR](https://www.cdc.gov/vaccines/hcp/vis/vis-statements/mmr.html) as a solution to the MUMPS problem, but this seemed a bit ambitious.
+There are already two MUMPS pacakages called [MUMPS.jl](https://github.com/JuliaSparse/MUMPS.jl) and [MUMPS.jl](https://github.com/JuliaSmoothOptimizers/MUMPS.jl), which seemed a bit crowded to me. I considered [MMR](https://www.cdc.gov/vaccines/hcp/vis/vis-statements/mmr.html) as the solution to the MUMPS problem, but this seemed a bit ambitious, and had other problems.
 
 ## Installation
 
@@ -39,7 +39,10 @@ it in your startup.jl file by adding this line to `~/.julia/config/startup.jl`
 push!(ENV,"MUMPS_PREFIX"=>"/path/to/your/mumps/directory")
 ````
 
-In addition to MUMPS.jl, you will need [MPI.jl](`https://github.com/JuliaParallel/MPI.jl`), via `]add MPI` or `Pkg.add("MPI")`.
+In addition to MUMPS.jl, you will need [MPI.jl](`https://github.com/JuliaParallel/MPI.jl`), via `Pkg.add("MPI")` or `]add MPI`:
+````JULIA
+(v1.1) pkg> add MPI
+````
 
 #### Installing [MUMPS 5.1.2](http://mumps.enseeiht.fr)
 
@@ -54,6 +57,8 @@ $ brew tap brewsci/num
 $ brew install brewsci-mumps
 ````
 should be sufficient for installing mumps and its dependencies.
+
+By default, this installs MUMPS and its dependencies in `"/usr/local/opt/brewsci-mumps"`
 
 ## Getting Started
 
@@ -70,9 +75,9 @@ at the top of your code.
 
 ##### Note on using MPI in REPL session
 
-To my knowledge, there is no easy way on Julia v1 to run MPI with multiple workers in an interactive REPL session. To take full advantage of the parallelism of MUMPS, write a Julia script and use `mpirun` from the command line, for example `mpirun -np 4 julia [filename]` executes filename with 4 workers.
+To my knowledge, there is no easy way on Julia v1 to run MPI with multiple workers in an interactive REPL session. To take full advantage of the parallelism of MUMPS, write a Julia script and use `mpirun` from the command line, for example `mpirun -np 4 julia [filename]` executes `filename` with 4 workers.
 
-To get the parallel advantage in an interactive session, consider using [Pardiso.jl](https://github.com/JuliaSparse/Pardiso.jl), which interfaces with a different PARallel DIrect SOlver (see what I did there?).
+To get the parallel advantage in an interactive session, consider using [Pardiso.jl](https://github.com/JuliaSparse/Pardiso.jl), which interfaces with a different PARallel DIrect SOlver.
 
 ## Basic Examples
 ````JULIA
@@ -109,7 +114,7 @@ computes select elements of the inverse of `A`. `IJ` is a sparse matrix whose sp
 
 The MUMPS3 package is build around the `Mumps{T}` structure, which contains `MumpsC{T}`, a structure which mirrors the [SDCZ]MUMPS_STRUC_C used inside the MUMPS library. For more control over how to access MUMPS, one can work directly with this structure.
 
-`Mumps(A; [sym, par=1]) -> mumps` initializes a `Mumps` object with the same type as `A`. The `sym` argument can be passed explicitly, else it is determined from the symmetry and positive definiteness of `A`. See the [MUMPS 5.1.2 documentation](http://mumps.enseeiht.fr/doc/userguide_5.1.2.pdf) for what `sym` and `par` mean.
+`Mumps(A; [sym, par=1]) -> mumps` initializes a `Mumps` object with the same type as `A`. The `sym` argument can be passed explicitly, else it is determined from the symmetry and positive definiteness of `A`. See the [MUMPS 5.1.2 documentation](http://mumps.enseeiht.fr/doc/userguide_5.1.2.pdf#page=24) for what `sym` and `par` mean.
 
 `Mumps(A, y; [sym, par=1]) -> mumps` initializes a `Mumps` object with the type determined by `A` and `y`, loaded with matrix `A` and right hand side `y`.
 
