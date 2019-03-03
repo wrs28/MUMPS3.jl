@@ -1,0 +1,3 @@
+Get to bottom of POSDEF (SYM=1) issue.
+Figure out why it's slower than native A\x at least in regime of "small" matrices
+  with complex arithmetic on one core (not using parallelism)

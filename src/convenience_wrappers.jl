@@ -32,37 +32,37 @@ If not arguments are passed, create an initialized but empty instance of `Mumps`
 Mumps{T}(;sym=0,par=1) where T = Mumps{T}(sym,par,MPI.COMM_WORLD.val)
 function Mumps(A::AbstractArray{T}; kwargs...) where T
     if !haskey(kwargs,:sym)
-        if issymmetric(A) && isposdef(A)
-            kwargs = (kwargs...,:sym => 1)
-        elseif issymmetric(A)
+        # if issymmetric(A) && isposdef(A)
+            # kwargs = (kwargs...,:sym => 1)
+        if issymmetric(A)
             kwargs = (kwargs...,:sym => 2)
         else
             kwargs = (kwargs...,:sym => 0)
         end
     end
     mumps = Mumps{T}(;kwargs...)
-    typeof(A)<:Array ? set_icntl!(mumps,5,1) : nothing
+    typeof(A)<:Array ? set_icntl!(mumps,5,1; displaylevel=0) : nothing
     provide_matrix!(mumps,A)
     return mumps
 end
 function Mumps(A::AbstractArray{T}, rhs::AbstractArray{TA}; kwargs...) where {T,TA}
     if !haskey(kwargs,:sym)
-        if issymmetric(A) && isposdef(A)
-            kwargs = (kwargs...,:sym => 1)
-        elseif issymmetric(A)
+        # if issymmetric(A) && isposdef(A)
+            # kwargs = (kwargs...,:sym => 1)
+            # kwargs = (kwargs...,:sym => 2) # FOR SOME REASON POSDEF MATRICES CAN COME UP SINGULAR...
+        if issymmetric(A)
             kwargs = (kwargs...,:sym => 2)
         else
             kwargs = (kwargs...,:sym => 0)
         end
     end
     mumps = Mumps{promote_type(T,TA)}(;kwargs...)
-    suppress_display!(mumps)
     typeof(A)<:Array ? set_icntl!(mumps,5,1) : nothing
     provide_matrix!(mumps,A)
     if typeof(rhs)<:SparseMatrixCSC
-        set_icntl!(mumps,20,1)
+        set_icntl!(mumps,20,1; displaylevel=0)
     elseif typeof(rhs)<:Array
-        set_icntl!(mumps,20,0)
+        set_icntl!(mumps,20,0; displaylevel=0)
     else
         throw(ArgumentError("unrecognized array type for rhs"))
     end
@@ -73,7 +73,7 @@ end
 
 """
     mumps_solve!(x,mumps)
-    mumps_solve!(x,A,y)
+    mumps_solve!(x,A,y; kwargs...)
     mumps_solve!(x,mumps,y)
 
 Solve `A*x=y`, saving result in pre-allocated x.
@@ -98,8 +98,8 @@ function mumps_solve!(x::Array,mumps::Mumps)
     invoke_mumps!(mumps)
     get_sol!(x,mumps)
 end
-function mumps_solve!(x::Array,A::AbstractArray,rhs::AbstractArray)
-    mumps = Mumps(A,rhs)
+function mumps_solve!(x::Array,A::AbstractArray,rhs::AbstractArray; kwargs...)
+    mumps = Mumps(A,rhs; kwargs...)
     suppress_display!(mumps)
     set_icntl!(mumps,24,1)
     mumps_solve!(x,mumps)
@@ -130,15 +130,9 @@ function mumps_solve(mumps::Mumps)
     mumps_solve!(x,mumps)
     return x
 end
-function mumps_solve(A::AbstractArray,rhs::AbstractArray{T,N}) where {T,N}
-    if N==1
-        x = copy(convert(Vector,rhs))
-    elseif N==2
-        x = copy(convert(Matrix,rhs))
-    else
-        throw(ArgumentError("unrecognized rhs dimension $N"))
-    end
-    mumps_solve!(x,A,rhs)
+function mumps_solve(A::AbstractArray,rhs::AbstractArray{T,N}; kwargs...) where {T,N}
+    x = fill(convert(promote_type(eltype(A),eltype(rhs)),NaN),size(rhs)...)
+    mumps_solve!(x,A,rhs; kwargs...)
     return x
 end
 function mumps_solve(mumps::Mumps,rhs::AbstractArray)

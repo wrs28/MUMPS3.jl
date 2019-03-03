@@ -114,16 +114,16 @@ function _provide_matrix_assembled!(mumps::Mumps,A::SparseMatrixCSC{T}) where T
 end
 function _provide_matrix_assembled_centralized!(mumps::Mumps{T},A::SparseMatrixCSC) where T
     mumpsc, gc_haven = mumps.mumpsc, mumps.gc_haven
+    I,J,V = findnz(A)
     if is_symmetric(mumps)
-        I,J,V = findnz(sparse(Symmetric(A)))
-    else
-        I,J,V = findnz(A)
+        sym_inds = J.≥I
+        I,J,V = I[sym_inds],J[sym_inds],V[sym_inds]
     end
     irn, jcn, a = convert.((Array{MUMPS_INT},Array{MUMPS_INT},Array{T}),(I,J,V))
     gc_haven.irn, gc_haven.jcn, gc_haven.a = irn, jcn, a
     mumpsc.irn, mumpsc.jcn, mumpsc.a = pointer.((irn,jcn,a))
     mumpsc.n = A.n
-    mumpsc.nnz = length(A.nzval)
+    mumpsc.nnz = length(V)
     return nothing
 end
 function _provide_matrix_assembled_distributed!(mumps::Mumps{T},A::SparseMatrixCSC) where T
