@@ -345,7 +345,7 @@ method suggested in the MUMS manual
 
 See also: [`mumps_schur!`](@ref), [`mumps_schur`](@ref)
 """
-function set_schur_centralized_by_column!(mumps::Mumps{T},schur_inds::Array{Int}) where T
+function set_schur_centralized_by_column!(mumps::Mumps{T},schur_inds::AbstractArray{Int}) where T
     gc_haven, mumpsc = mumps.gc_haven, mumps.mumpsc
     mumpsc.size_schur = length(schur_inds)
     listvar_schur = convert.(MUMPS_INT,schur_inds)
