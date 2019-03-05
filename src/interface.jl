@@ -10,7 +10,7 @@ provide_rhs!,
 get_rhs!, get_rhs,
 get_sol!, get_sol,
 set_schur_centralized_by_column!,
-get_schur!, get_schur
+get_schur_complement!, get_schur_complement
 
 
 """
@@ -307,32 +307,32 @@ end
 
 
 """
-    get_schur!(S,mumps)
+    get_schur_complement!(S,mumps)
 
 Retrieve Schur complement matrix from `mumps` into pre-allocated `S`
 
-See also: [`get_schur`](@ref), [`mumps_schur!`](@ref), [`mumps_schur`](@ref)
+See also: [`get_schur_complement`](@ref), [`mumps_schur!`](@ref), [`mumps_schur`](@ref)
 """
-function get_schur!(S,mumps::Mumps)
+function get_schur_complement!(S,mumps::Mumps)
     @assert has_schur(mumps) "schur complement not yet allocated."
-    get_schur_unsafe!(S,mumps)
+    get_schur_complement_unsafe!(S,mumps)
 end
-function get_schur_unsafe!(S,mumps::Mumps)
+function get_schur_complement_unsafe!(S,mumps::Mumps)
     for i ∈ LinearIndices(S)
         S[i] = unsafe_load(mumps.mumpsc.schur,i)
     end
     return nothing
 end
 """
-    get_schur(mumps) -> S
+    get_schur_complement(mumps) -> S
 
 Retrieve Schur complement matrix `S` from `mumps`
 
-See also: [`get_schur!`](@ref), [`mumps_schur!`](@ref), [`mumps_schur`](@ref)
+See also: [`get_schur_complement!`](@ref), [`mumps_schur!`](@ref), [`mumps_schur`](@ref)
 """
-function get_schur(mumps::Mumps{T}) where T
+function get_schur_complement(mumps::Mumps{T}) where T
     S = Array{T}(undef,mumps.mumpsc.size_schur,mumps.mumpsc.size_schur)
-    get_schur!(S,mumps)
+    get_schur_complement!(S,mumps)
     return S
 end
 

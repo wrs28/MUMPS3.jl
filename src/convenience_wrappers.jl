@@ -226,7 +226,7 @@ end
 `schur_inds` is integer array of Schur indices.
 If `x` is sparse, Schur indices determined from populated rows of `x`
 
-See also: [`mumps_schur_complement`](@ref), [`get_schur!`](@ref), [`get_schur`](@ref)
+See also: [`mumps_schur_complement`](@ref), [`get_schur_complement!`](@ref), [`get_schur_complement`](@ref)
 """
 function mumps_schur_complement!(mumps::Mumps, schur_inds::AbstractArray{Int,1})
     @assert has_matrix(mumps) "matrix not yet provided to mumps object"
@@ -255,7 +255,7 @@ function mumps_schur_complement(A::AbstractArray,x)
     suppress_display!(mumps)
     set_icntl!(mumps,8,0) # turn scaling off, not used with schur anyway (suppresses warning message with schur)
     mumps_schur_complement!(mumps,x)
-    S = get_schur(mumps)
+    S = get_schur_complement(mumps)
     finalize!(mumps)
     return S
 end
