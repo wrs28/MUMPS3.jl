@@ -9,7 +9,7 @@
 export mumps_solve!, mumps_solve,
 mumps_factorize!, mumps_factorize,
 mumps_det!, mumps_det,
-mumps_schur!, mumps_schur,
+mumps_schur_complement!, mumps_schur_complement,
 mumps_select_inv!, mumps_select_inv,
 initialize!, finalize!
 
@@ -29,27 +29,23 @@ They are:
 
 If not arguments are passed, create an initialized but empty instance of `Mumps`
 """
-Mumps{T}(;sym=0,par=1) where T = Mumps{T}(sym,par,MPI.COMM_WORLD.val)
+Mumps{T}(;sym=0,par=1) where T = Mumps{T}(sym,par,-987654)
 function Mumps(A::AbstractArray{T}; kwargs...) where T
     if !haskey(kwargs,:sym)
-        if issymmetric(A) && isposdef(A)
-            kwargs = (kwargs...,:sym => 1)
-        elseif issymmetric(A)
+        if issymmetric(A)
             kwargs = (kwargs...,:sym => 2)
         else
             kwargs = (kwargs...,:sym => 0)
         end
     end
     mumps = Mumps{T}(;kwargs...)
-    typeof(A)<:Array ? set_icntl!(mumps,5,1) : nothing
+    typeof(A)<:Array ? set_icntl!(mumps,5,1; displaylevel=0) : nothing
     provide_matrix!(mumps,A)
     return mumps
 end
 function Mumps(A::AbstractArray{T}, rhs::AbstractArray{TA}; kwargs...) where {T,TA}
     if !haskey(kwargs,:sym)
-        if issymmetric(A) && isposdef(A)
-            kwargs = (kwargs...,:sym => 1)
-        elseif issymmetric(A)
+        if issymmetric(A)
             kwargs = (kwargs...,:sym => 2)
         else
             kwargs = (kwargs...,:sym => 0)
@@ -58,10 +54,10 @@ function Mumps(A::AbstractArray{T}, rhs::AbstractArray{TA}; kwargs...) where {T,
     mumps = Mumps{promote_type(T,TA)}(;kwargs...)
     typeof(A)<:Array ? set_icntl!(mumps,5,1) : nothing
     provide_matrix!(mumps,A)
-    if typeof(rhs)<:SparseMatrixCSC
-        set_icntl!(mumps,20,1)
+    if typeof(rhs)<:AbstractSparseArray
+        set_icntl!(mumps,20,1; displaylevel=0)
     elseif typeof(rhs)<:Array
-        set_icntl!(mumps,20,0)
+        set_icntl!(mumps,20,0; displaylevel=0)
     else
         throw(ArgumentError("unrecognized array type for rhs"))
     end
@@ -72,7 +68,7 @@ end
 
 """
     mumps_solve!(x,mumps)
-    mumps_solve!(x,A,y)
+    mumps_solve!(x,A,y; kwargs...)
     mumps_solve!(x,mumps,y)
 
 Solve `A*x=y`, saving result in pre-allocated x.
@@ -81,27 +77,27 @@ If `y` is not given, `mumps` must have previously been provided `y`
 
 See also: [`mumps_solve`](@ref), [`get_sol!`](@ref), [`get_sol`](@ref)
 """
-function mumps_solve!(x::Array,mumps::Mumps)
+function mumps_solve!(mumps::Mumps)
     @assert has_matrix(mumps) "matrix not yet provided to mumps object"
     @assert has_rhs(mumps) "rhs not yet provided to mumps object"
     if mumps.mumpsc.job ∈ [2,4] # if already factored, just solve
-        set_icntl!(mumps,7,0) # for now can't leave up to system because it could choose METIS (option 5) which has issues with the current build of mumps from brew (as of Feb 10 2019)
         mumps.mumpsc.job = 3
     elseif mumps.mumpsc.job ∈ [1] # if analyzed only, factorize and solve
-        set_icntl!(mumps,7,0) # for now can't leave up to system because it could choose METIS (option 5) which has issues with the current build of mumps from brew (as of Feb 10 2019)
         mumps.mumpsc.job=5
     elseif mumps.mumpsc.job ∈ [3,5,6] # is solved already, retrieve solution
-        get_sol!(x,mumps)
         return nothing
     else # else analyze, factor, solve
-        set_icntl!(mumps,7,0) # for now can't leave up to system because it could choose METIS (option 5) which has issues with the current build of mumps from brew (as of Feb 10 2019)
         mumps.mumpsc.job=6
     end
     invoke_mumps!(mumps)
+    return nothing
+end
+function mumps_solve!(x::Array,mumps::Mumps)
+    mumps_solve!(mumps)
     get_sol!(x,mumps)
 end
-function mumps_solve!(x::Array,A::AbstractArray,rhs::AbstractArray)
-    mumps = Mumps(A,rhs)
+function mumps_solve!(x::Array,A::AbstractArray,rhs::AbstractArray; kwargs...)
+    mumps = Mumps(A,rhs; kwargs...)
     suppress_display!(mumps)
     set_icntl!(mumps,24,1)
     mumps_solve!(x,mumps)
@@ -132,13 +128,13 @@ function mumps_solve(mumps::Mumps)
     mumps_solve!(x,mumps)
     return x
 end
-function mumps_solve(A::AbstractArray,rhs::AbstractArray)
-    x = convert(Matrix,rhs)
-    mumps_solve!(x,A,rhs)
+function mumps_solve(A::AbstractArray,rhs::AbstractArray{T,N}; kwargs...) where {T,N}
+    x = fill(convert(promote_type(eltype(A),eltype(rhs)),NaN),size(rhs)...)
+    mumps_solve!(x,A,rhs; kwargs...)
     return x
 end
 function mumps_solve(mumps::Mumps,rhs::AbstractArray)
-    x = convert(Matrix,rhs)
+    x = copy(convert(Matrix,rhs))
     mumps_solve!(x,mumps,rhs)
     return x
 end
@@ -154,7 +150,6 @@ See also: [`mumps_factorize`](@ref)
 """
 function mumps_factorize!(mumps::Mumps)
     @assert has_matrix(mumps) "matrix not yet provided to mumps object"
-    set_icntl!(mumps,7,0) # for now can't leave up to system because it could choose METIS (option 5) which has issues with the current build of mumps from brew (as of Feb 10 2019)
     if mumps.mumpsc.job ∈ [2,3,4,5,6] # already factored
         @warn "already factored"
         return nothing
@@ -225,18 +220,17 @@ end
 
 
 """
-    mumps_schur!(mumps, schur_inds)
-    mumps_schur!(mumps, x)
+    mumps_schur_complement!(mumps, schur_inds)
+    mumps_schur_complement_complement!(mumps, x)
 
 `schur_inds` is integer array of Schur indices.
 If `x` is sparse, Schur indices determined from populated rows of `x`
 
-See also: [`mumps_schur`](@ref), [`get_schur!`](@ref), [`get_schur`](@ref)
+See also: [`mumps_schur_complement`](@ref), [`get_schur_complement!`](@ref), [`get_schur_complement`](@ref)
 """
-function mumps_schur!(mumps::Mumps, schur_inds::AbstractArray{Int,1})
+function mumps_schur_complement!(mumps::Mumps, schur_inds::AbstractArray{Int,1})
     @assert has_matrix(mumps) "matrix not yet provided to mumps object"
     set_schur_centralized_by_column!(mumps, schur_inds)
-    set_icntl!(mumps,7,0) # for now can't leave up to system because it could choose METIS (option 5) which has issues with the current build of mumps from brew (as of Feb 10 2019)
     if mumps.mumpsc.job ∈ [1] # if analyzed only, factorize
         mumps.mumpsc.job=2
     else # else analyze, factor
@@ -244,23 +238,24 @@ function mumps_schur!(mumps::Mumps, schur_inds::AbstractArray{Int,1})
     end
     invoke_mumps!(mumps)
 end
-mumps_schur!(mumps::Mumps, x::SparseMatrixCSC) = mumps_schur!(mumps,unique!(sort!(x.rowval)))
-mumps_schur!(mumps::Mumps, x::SparseVector) = mumps_schur!(mumps,x.nzind)
+mumps_schur_complement!(mumps::Mumps, x::SparseMatrixCSC) = mumps_schur_complement!(mumps,unique!(sort!(x.rowval)))
+mumps_schur_complement!(mumps::Mumps, x::SparseVector) = mumps_schur_complement!(mumps,x.nzind)
 """
-    mumps_schur(A,schur_inds) -> S
-    mumps_schur(A,x) -> S
+    mumps_schur_complement(A,schur_inds) -> S
+    mumps_schur_complement(A,x) -> S
 
 `schur_inds` is integer array
 `x` is sparse, populated rows are Schur indices
 `S` is Schur complement matrix.
 
-See also: [`mumps_schur!`](@ref)
+See also: [`mumps_schur_complement!`](@ref)
 """
-function mumps_schur(A::AbstractArray,x)
+function mumps_schur_complement(A::AbstractArray,x)
     mumps = Mumps(A)
     suppress_display!(mumps)
-    mumps_schur!(mumps,x)
-    S = get_schur(mumps)
+    set_icntl!(mumps,8,0) # turn scaling off, not used with schur anyway (suppresses warning message with schur)
+    mumps_schur_complement!(mumps,x)
+    S = get_schur_complement(mumps)
     finalize!(mumps)
     return S
 end
@@ -282,13 +277,10 @@ function mumps_select_inv!(x::AbstractSparseArray,mumps::Mumps)
     set_icntl!(mumps,20,3)
     provide_rhs!(mumps,x)
     if mumps.mumpsc.job ∈ [2,4] # if already factored, just solve
-        set_icntl!(mumps,7,0) # for now can't leave up to system because it could choose METIS (option 5) which has issues with the current build of mumps from brew (as of Feb 10 2019)
         mumps.mumpsc.job = 3
     elseif mumps.mumpsc.job ∈ [1] # if analyzed only, factorize and solve
-        set_icntl!(mumps,7,0) # for now can't leave up to system because it could choose METIS (option 5) which has issues with the current build of mumps from brew (as of Feb 10 2019)
         mumps.mumpsc.job=5
     else # else analyze, factor, solve
-        set_icntl!(mumps,7,0) # for now can't leave up to system because it could choose METIS (option 5) which has issues with the current build of mumps from brew (as of Feb 10 2019)
         mumps.mumpsc.job=6
     end
     invoke_mumps!(mumps)

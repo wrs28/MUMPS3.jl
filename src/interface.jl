@@ -10,7 +10,7 @@ provide_rhs!,
 get_rhs!, get_rhs,
 get_sol!, get_sol,
 set_schur_centralized_by_column!,
-get_schur!, get_schur
+get_schur_complement!, get_schur_complement
 
 
 """
@@ -27,7 +27,7 @@ initialized.
 See also: [`invoke_mumps!`](@ref)
 """
 invoke_mumps_unsafe!(mumps::Mumps) = invoke_mumps_unsafe!(mumps.mumpsc)
-function invoke_mumps_unsafe!(mumpsc::MumpsC{TC,TR}) where {TC,TR}
+@inline function invoke_mumps_unsafe!(mumpsc::MumpsC{TC,TR}) where {TC,TR}
     @assert MPI.Initialized() "must call MPI.Init() exactly once before calling mumps"
     if TC==Float32
         cfun = :smumps_c
@@ -38,9 +38,8 @@ function invoke_mumps_unsafe!(mumpsc::MumpsC{TC,TR}) where {TC,TR}
     elseif TC==ComplexF64
         cfun = :zmumps_c
     end
-    lib = dlopen(MUMPS_LIB)
-    sym = dlsym(lib,cfun)
-    @eval ccall($(sym), Cvoid, (Ref{MumpsC{$TC,$TR}},), $(mumpsc))
+    sym = dlsym(LIB,cfun)
+    ccall(sym,Cvoid,(Ref{MumpsC{TC,TR}},), mumpsc)
     return nothing
 end
 """
@@ -116,7 +115,7 @@ end
 function _provide_matrix_assembled_centralized!(mumps::Mumps{T},A::SparseMatrixCSC) where T
     mumpsc, gc_haven = mumps.mumpsc, mumps.gc_haven
     if is_symmetric(mumps)
-        I,J,V = findnz(sparse(Symmetric(A)))
+        I,J,V = findnz(triu(A))
     else
         I,J,V = findnz(A)
     end
@@ -124,7 +123,7 @@ function _provide_matrix_assembled_centralized!(mumps::Mumps{T},A::SparseMatrixC
     gc_haven.irn, gc_haven.jcn, gc_haven.a = irn, jcn, a
     mumpsc.irn, mumpsc.jcn, mumpsc.a = pointer.((irn,jcn,a))
     mumpsc.n = A.n
-    mumpsc.nnz = length(A.nzval)
+    mumpsc.nnz = length(V)
     return nothing
 end
 function _provide_matrix_assembled_distributed!(mumps::Mumps{T},A::SparseMatrixCSC) where T
@@ -308,32 +307,32 @@ end
 
 
 """
-    get_schur!(S,mumps)
+    get_schur_complement!(S,mumps)
 
 Retrieve Schur complement matrix from `mumps` into pre-allocated `S`
 
-See also: [`get_schur`](@ref), [`mumps_schur!`](@ref), [`mumps_schur`](@ref)
+See also: [`get_schur_complement`](@ref), [`mumps_schur!`](@ref), [`mumps_schur`](@ref)
 """
-function get_schur!(S,mumps::Mumps)
+function get_schur_complement!(S,mumps::Mumps)
     @assert has_schur(mumps) "schur complement not yet allocated."
-    get_schur_unsafe!(S,mumps)
+    get_schur_complement_unsafe!(S,mumps)
 end
-function get_schur_unsafe!(S,mumps::Mumps)
+function get_schur_complement_unsafe!(S,mumps::Mumps)
     for i ∈ LinearIndices(S)
         S[i] = unsafe_load(mumps.mumpsc.schur,i)
     end
     return nothing
 end
 """
-    get_schur(mumps) -> S
+    get_schur_complement(mumps) -> S
 
 Retrieve Schur complement matrix `S` from `mumps`
 
-See also: [`get_schur!`](@ref), [`mumps_schur!`](@ref), [`mumps_schur`](@ref)
+See also: [`get_schur_complement!`](@ref), [`mumps_schur!`](@ref), [`mumps_schur`](@ref)
 """
-function get_schur(mumps::Mumps{T}) where T
+function get_schur_complement(mumps::Mumps{T}) where T
     S = Array{T}(undef,mumps.mumpsc.size_schur,mumps.mumpsc.size_schur)
-    get_schur!(S,mumps)
+    get_schur_complement!(S,mumps)
     return S
 end
 
@@ -346,7 +345,7 @@ method suggested in the MUMS manual
 
 See also: [`mumps_schur!`](@ref), [`mumps_schur`](@ref)
 """
-function set_schur_centralized_by_column!(mumps::Mumps{T},schur_inds::Array{Int}) where T
+function set_schur_centralized_by_column!(mumps::Mumps{T},schur_inds::AbstractArray{Int}) where T
     gc_haven, mumpsc = mumps.gc_haven, mumps.mumpsc
     mumpsc.size_schur = length(schur_inds)
     listvar_schur = convert.(MUMPS_INT,schur_inds)

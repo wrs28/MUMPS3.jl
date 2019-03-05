@@ -11,7 +11,7 @@ The goal of this package is to provide simultaneously the full functionality and
 This is done by providing a Julia structure `MumpsC{T}` which exactly matches the [SDCZ]MUMPS_STRUC_C used inside MUMPS 5.1.2, which is then passed to the MUMPS library. In fact this structure is itself wrapped inside another Julia structure `Mumps{T}` for the purposes of [protecting the memory used by C from Julia's garbage collection](https://docs.julialang.org/en/v1/manual/calling-c-and-fortran-code/#Garbage-Collection-Safety-1). This `Mumps{T}` structure is what is exposed to the user.
 
 ##### Name
-There are already two MUMPS pacakages called [MUMPS.jl](https://github.com/JuliaSparse/MUMPS.jl) and [MUMPS.jl](https://github.com/JuliaSmoothOptimizers/MUMPS.jl), which seemed a bit crowded to me. I considered [MMR](https://www.cdc.gov/vaccines/hcp/vis/vis-statements/mmr.html) as a solution to the MUMPS problem, but this seemed a bit ambitious.
+There are already two MUMPS pacakages called [MUMPS.jl](https://github.com/JuliaSparse/MUMPS.jl) and [MUMPS.jl](https://github.com/JuliaSmoothOptimizers/MUMPS.jl), which seemed a bit crowded to me. I considered [MMR](https://www.cdc.gov/vaccines/hcp/vis/vis-statements/mmr.html) as the solution to the MUMPS problem, but this seemed a bit ambitious, and had other problems.
 
 ## Installation
 
@@ -39,7 +39,10 @@ it in your startup.jl file by adding this line to `~/.julia/config/startup.jl`
 push!(ENV,"MUMPS_PREFIX"=>"/path/to/your/mumps/directory")
 ````
 
-In addition to MUMPS.jl, you will need [MPI.jl](`https://github.com/JuliaParallel/MPI.jl`), via `]add MPI` or `Pkg.add("MPI")`.
+In addition to MUMPS.jl, you will need [MPI.jl](`https://github.com/JuliaParallel/MPI.jl`), via `Pkg.add("MPI")` or `]add MPI`:
+````JULIA
+(v1.1) pkg> add MPI
+````
 
 #### Installing [MUMPS 5.1.2](http://mumps.enseeiht.fr)
 
@@ -54,6 +57,8 @@ $ brew tap brewsci/num
 $ brew install brewsci-mumps
 ````
 should be sufficient for installing mumps and its dependencies.
+
+By default, this installs MUMPS and its dependencies in `"/usr/local/opt/brewsci-mumps"`
 
 ## Getting Started
 
@@ -70,9 +75,9 @@ at the top of your code.
 
 ##### Note on using MPI in REPL session
 
-To my knowledge, there is no easy way on Julia v1 to run MPI with multiple workers in an interactive REPL session. To take full advantage of the parallelism of MUMPS, write a Julia script and use `mpirun` from the command line, for example `mpirun -np 4 julia [filename]` executes filename with 4 workers.
+To my knowledge, there is no easy way on Julia v1 to run MPI with multiple workers in an interactive REPL session. To take full advantage of the parallelism of MUMPS, write a Julia script and use `mpirun` from the command line, for example `mpirun -np 4 julia [filename]` executes `filename` with 4 workers.
 
-To get the parallel advantage in an interactive session, consider using [Pardiso.jl](https://github.com/JuliaSparse/Pardiso.jl), which interfaces with a different PARallel DIrect SOlver (see what I did there?).
+To get the parallel advantage in an interactive session, consider using [Pardiso.jl](https://github.com/JuliaSparse/Pardiso.jl), which interfaces with a different PARallel DIrect SOlver.
 
 ## Basic Examples
 ````JULIA
@@ -91,7 +96,7 @@ norm(A*x-y) # should be ~1-e15
 
 ## Basic Usage
 
-There are five high-level functions that use the [MUMPS 5.1.2 library](http://mumps.enseeiht.fr): `mumps_solve`, `mumps_factorize`, `mumps_det`, `mumps_schur`, `mumps_select_inv`. The first three are self-explanatory, and last two compute the Schur complement matrix and select entries of the inverse, respectively. With the exception of `mumps_factorize`, all of these methods internally create and destroy their own mumps instances.
+There are five high-level functions that use the [MUMPS 5.1.2 library](http://mumps.enseeiht.fr): `mumps_solve`, `mumps_factorize`, `mumps_det`, `mumps_schur_complement`, `mumps_select_inv`. The first three are self-explanatory, and last two compute the Schur complement matrix and select entries of the inverse, respectively. With the exception of `mumps_factorize`, all of these methods internally create and destroy their own mumps instances.
 
 `mumps_solve(A,y) -> x` takes in a square matrix `A` and vector or matrix `y` and outputs `x` such that `A*x=y`.
 
@@ -99,7 +104,7 @@ There are five high-level functions that use the [MUMPS 5.1.2 library](http://mu
 
 `mumps_det(A) -> d` computes the determinant of `A`.
 
-`mumps_schur(A,shur_inds) -> S` computes the Schur complement `S` of `A`. The indices defining the Schur block are contained in `schur_inds`, either as an integer array or as a sparse matrix, the populated rows of which define the Schur variables.
+`mumps_schur_complement(A,shur_inds) -> S` computes the Schur complement `S` of `A`. The indices defining the Schur block are contained in `schur_inds`, either as an integer array or as a sparse matrix, the populated rows of which define the Schur variables.
 
 `mumps_select_inv(A,IJ) -> a⁻¹` and
 `mumps_select_inv(A,I,J) -> a⁻¹`
@@ -109,7 +114,7 @@ computes select elements of the inverse of `A`. `IJ` is a sparse matrix whose sp
 
 The MUMPS3 package is build around the `Mumps{T}` structure, which contains `MumpsC{T}`, a structure which mirrors the [SDCZ]MUMPS_STRUC_C used inside the MUMPS library. For more control over how to access MUMPS, one can work directly with this structure.
 
-`Mumps(A; [sym, par=1]) -> mumps` initializes a `Mumps` object with the same type as `A`. The `sym` argument can be passed explicitly, else it is determined from the symmetry and positive definiteness of `A`. See the [MUMPS 5.1.2 documentation](http://mumps.enseeiht.fr/doc/userguide_5.1.2.pdf) for what `sym` and `par` mean.
+`Mumps(A; [sym, par=1]) -> mumps` initializes a `Mumps` object with the same type as `A`. The `sym` argument can be passed explicitly, else it is determined from the symmetry and positive definiteness of `A`. See the [MUMPS 5.1.2 documentation](http://mumps.enseeiht.fr/doc/userguide_5.1.2.pdf#page=24) for what `sym` and `par` mean.
 
 `Mumps(A, y; [sym, par=1]) -> mumps` initializes a `Mumps` object with the type determined by `A` and `y`, loaded with matrix `A` and right hand side `y`.
 
@@ -123,7 +128,7 @@ The MUMPS3 package is build around the `Mumps{T}` structure, which contains `Mum
 
 `mumps_det!(mumps)` computes the determinant in `mumps`. The determinant can be accessed by subsequently calling `det(mumps)`. This requires first loading LinearAlgebra: `using LinearAlgebra`.
 
-`mumps_schur!(mumps,x)` computes the Schur complement matrix, where the Schur indices are defined by `x` in the same way as for `mumps_schur` (see above). The Schur complement can be subsequently accessed by `get_schur(mumps)`.
+`mumps_schur_complement!(mumps,x)` computes the Schur complement matrix, where the Schur indices are defined by `x` in the same way as for `mumps_schur_complement` (see above). The Schur complement can be subsequently accessed by `get_schur_complement(mumps)`.
 
 `mumps_select_inv!(x,mumps)` computes selected elements of the inverse of `A` (previously provided to `mumps`). The elements sought are determined from the sparsity pattern of `x`, which the results are also saved in.
 
@@ -140,7 +145,7 @@ If not working with the highest level functions, it is often necessary to provid
 `get_rhs(mumps) -> y` retrieves the right hand side from `mumps`, if available.
 `get_rhs!(y,mumps)` does the same thing in-place.
 
-`get_schur(mumps) -> S` retrieves the Schur complement matrix `S` from `mumps`, if available. `get_schur!(S,mumps)` does the same thing in-place.
+`get_schur_complement(mumps) -> S` retrieves the Schur complement matrix `S` from `mumps`, if available. `get_schur_complement!(S,mumps)` does the same thing in-place.
 
 `get_sol(mumps) -> x` retrieves the solution `x` from `mumps`. MUMPS 5.1.2 can overwrite the rhs with the solution (see [Section 5.13.4 of manual](http://mumps.enseeiht.fr/doc/userguide_5.1.2.pdf)). This function differs from `get_rhs!` because it returns always the solution data, which may or may not be the same as the rhs data (depending on whether rhs is sparse or not). `get_sol!(x,mumps)` does the same thing, in-place.
 
@@ -176,8 +181,8 @@ Some convenience functions for changing INCTL are provided, though their documen
 |`provide_rhs!(mumps,y)`|
 |`get_rhs!(y,mumps)`|
 |`get_rhs(mumps) -> y`|
-|`get_schur!(S,mumps)`|
-|`get_schur(mumps) -> S`|
+|`get_schur_complement!(S,mumps)`|
+|`get_schur_complement(mumps) -> S`|
 |`get_sol!(x,mumps)`|
 |`get_sol(mumps) -> x`|
 
@@ -201,10 +206,10 @@ Some convenience functions for changing INCTL are provided, though their documen
 |`mumps_factorize(A) -> mumps`|
 |`mumps_det!(mumps; discard=true)`|
 |`mumps_det(A) -> det`|
-|`mumps_schur!(mumps, schur_inds)`|
-|`mumps_schur!(mumps, x)`|
-|`mumps_schur(A,schur_inds) -> S`|
-|`mumps_schur(A,x) -> S`|
+|`mumps_schur_complement!(mumps, schur_inds)`|
+|`mumps_schur_complement!(mumps, x)`|
+|`mumps_schur_complement(A,schur_inds) -> S`|
+|`mumps_schur_complement(A,x) -> S`|
 |`mumps_select_inv!(x,mumps)`|
 |`mumps_select_inv!(x,A)`|
 |`mumps_select_inv(A,IJ::Sparse) -> A⁻¹`|
