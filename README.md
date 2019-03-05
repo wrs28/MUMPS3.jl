@@ -96,7 +96,7 @@ norm(A*x-y) # should be ~1-e15
 
 ## Basic Usage
 
-There are five high-level functions that use the [MUMPS 5.1.2 library](http://mumps.enseeiht.fr): `mumps_solve`, `mumps_factorize`, `mumps_det`, `mumps_schur`, `mumps_select_inv`. The first three are self-explanatory, and last two compute the Schur complement matrix and select entries of the inverse, respectively. With the exception of `mumps_factorize`, all of these methods internally create and destroy their own mumps instances.
+There are five high-level functions that use the [MUMPS 5.1.2 library](http://mumps.enseeiht.fr): `mumps_solve`, `mumps_factorize`, `mumps_det`, `mumps_schur_complement`, `mumps_select_inv`. The first three are self-explanatory, and last two compute the Schur complement matrix and select entries of the inverse, respectively. With the exception of `mumps_factorize`, all of these methods internally create and destroy their own mumps instances.
 
 `mumps_solve(A,y) -> x` takes in a square matrix `A` and vector or matrix `y` and outputs `x` such that `A*x=y`.
 
@@ -104,7 +104,7 @@ There are five high-level functions that use the [MUMPS 5.1.2 library](http://mu
 
 `mumps_det(A) -> d` computes the determinant of `A`.
 
-`mumps_schur(A,shur_inds) -> S` computes the Schur complement `S` of `A`. The indices defining the Schur block are contained in `schur_inds`, either as an integer array or as a sparse matrix, the populated rows of which define the Schur variables.
+`mumps_schur_complement(A,shur_inds) -> S` computes the Schur complement `S` of `A`. The indices defining the Schur block are contained in `schur_inds`, either as an integer array or as a sparse matrix, the populated rows of which define the Schur variables.
 
 `mumps_select_inv(A,IJ) -> a⁻¹` and
 `mumps_select_inv(A,I,J) -> a⁻¹`
@@ -128,7 +128,7 @@ The MUMPS3 package is build around the `Mumps{T}` structure, which contains `Mum
 
 `mumps_det!(mumps)` computes the determinant in `mumps`. The determinant can be accessed by subsequently calling `det(mumps)`. This requires first loading LinearAlgebra: `using LinearAlgebra`.
 
-`mumps_schur!(mumps,x)` computes the Schur complement matrix, where the Schur indices are defined by `x` in the same way as for `mumps_schur` (see above). The Schur complement can be subsequently accessed by `get_schur(mumps)`.
+`mumps_schur_complement!(mumps,x)` computes the Schur complement matrix, where the Schur indices are defined by `x` in the same way as for `mumps_schur_complement` (see above). The Schur complement can be subsequently accessed by `get_schur_complement(mumps)`.
 
 `mumps_select_inv!(x,mumps)` computes selected elements of the inverse of `A` (previously provided to `mumps`). The elements sought are determined from the sparsity pattern of `x`, which the results are also saved in.
 
@@ -145,7 +145,7 @@ If not working with the highest level functions, it is often necessary to provid
 `get_rhs(mumps) -> y` retrieves the right hand side from `mumps`, if available.
 `get_rhs!(y,mumps)` does the same thing in-place.
 
-`get_schur(mumps) -> S` retrieves the Schur complement matrix `S` from `mumps`, if available. `get_schur!(S,mumps)` does the same thing in-place.
+`get_schur_complement(mumps) -> S` retrieves the Schur complement matrix `S` from `mumps`, if available. `get_schur_complement!(S,mumps)` does the same thing in-place.
 
 `get_sol(mumps) -> x` retrieves the solution `x` from `mumps`. MUMPS 5.1.2 can overwrite the rhs with the solution (see [Section 5.13.4 of manual](http://mumps.enseeiht.fr/doc/userguide_5.1.2.pdf)). This function differs from `get_rhs!` because it returns always the solution data, which may or may not be the same as the rhs data (depending on whether rhs is sparse or not). `get_sol!(x,mumps)` does the same thing, in-place.
 
@@ -181,8 +181,8 @@ Some convenience functions for changing INCTL are provided, though their documen
 |`provide_rhs!(mumps,y)`|
 |`get_rhs!(y,mumps)`|
 |`get_rhs(mumps) -> y`|
-|`get_schur!(S,mumps)`|
-|`get_schur(mumps) -> S`|
+|`get_schur_complement!(S,mumps)`|
+|`get_schur_complement(mumps) -> S`|
 |`get_sol!(x,mumps)`|
 |`get_sol(mumps) -> x`|
 
@@ -206,10 +206,10 @@ Some convenience functions for changing INCTL are provided, though their documen
 |`mumps_factorize(A) -> mumps`|
 |`mumps_det!(mumps; discard=true)`|
 |`mumps_det(A) -> det`|
-|`mumps_schur!(mumps, schur_inds)`|
-|`mumps_schur!(mumps, x)`|
-|`mumps_schur(A,schur_inds) -> S`|
-|`mumps_schur(A,x) -> S`|
+|`mumps_schur_complement!(mumps, schur_inds)`|
+|`mumps_schur_complement!(mumps, x)`|
+|`mumps_schur_complement(A,schur_inds) -> S`|
+|`mumps_schur_complement(A,x) -> S`|
 |`mumps_select_inv!(x,mumps)`|
 |`mumps_select_inv!(x,A)`|
 |`mumps_select_inv(A,IJ::Sparse) -> A⁻¹`|
