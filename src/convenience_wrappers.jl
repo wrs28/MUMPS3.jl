@@ -29,7 +29,7 @@ They are:
 
 If not arguments are passed, create an initialized but empty instance of `Mumps`
 """
-Mumps{T}(;sym=0,par=1) where T = Mumps{T}(sym,par,MPI.COMM_WORLD.val)
+Mumps{T}(;sym=0,par=1) where T = Mumps{T}(sym,par,-987654)
 function Mumps(A::AbstractArray{T}; kwargs...) where T
     if !haskey(kwargs,:sym)
         if issymmetric(A)
@@ -54,7 +54,7 @@ function Mumps(A::AbstractArray{T}, rhs::AbstractArray{TA}; kwargs...) where {T,
     mumps = Mumps{promote_type(T,TA)}(;kwargs...)
     typeof(A)<:Array ? set_icntl!(mumps,5,1) : nothing
     provide_matrix!(mumps,A)
-    if typeof(rhs)<:SparseMatrixCSC
+    if typeof(rhs)<:AbstractSparseArray
         set_icntl!(mumps,20,1; displaylevel=0)
     elseif typeof(rhs)<:Array
         set_icntl!(mumps,20,0; displaylevel=0)
@@ -77,7 +77,7 @@ If `y` is not given, `mumps` must have previously been provided `y`
 
 See also: [`mumps_solve`](@ref), [`get_sol!`](@ref), [`get_sol`](@ref)
 """
-function mumps_solve!(x::Array,mumps::Mumps)
+function mumps_solve!(mumps::Mumps)
     @assert has_matrix(mumps) "matrix not yet provided to mumps object"
     @assert has_rhs(mumps) "rhs not yet provided to mumps object"
     if mumps.mumpsc.job ∈ [2,4] # if already factored, just solve
@@ -85,12 +85,15 @@ function mumps_solve!(x::Array,mumps::Mumps)
     elseif mumps.mumpsc.job ∈ [1] # if analyzed only, factorize and solve
         mumps.mumpsc.job=5
     elseif mumps.mumpsc.job ∈ [3,5,6] # is solved already, retrieve solution
-        get_sol!(x,mumps)
         return nothing
     else # else analyze, factor, solve
         mumps.mumpsc.job=6
     end
     invoke_mumps!(mumps)
+    return nothing
+end
+function mumps_solve!(x::Array,mumps::Mumps)
+    mumps_solve!(mumps)
     get_sol!(x,mumps)
 end
 function mumps_solve!(x::Array,A::AbstractArray,rhs::AbstractArray; kwargs...)
