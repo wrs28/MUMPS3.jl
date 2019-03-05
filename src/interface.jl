@@ -27,7 +27,7 @@ initialized.
 See also: [`invoke_mumps!`](@ref)
 """
 invoke_mumps_unsafe!(mumps::Mumps) = invoke_mumps_unsafe!(mumps.mumpsc)
-function invoke_mumps_unsafe!(mumpsc::MumpsC{TC,TR}) where {TC,TR}
+@inline function invoke_mumps_unsafe!(mumpsc::MumpsC{TC,TR}) where {TC,TR}
     @assert MPI.Initialized() "must call MPI.Init() exactly once before calling mumps"
     if TC==Float32
         cfun = :smumps_c
@@ -114,10 +114,10 @@ function _provide_matrix_assembled!(mumps::Mumps,A::SparseMatrixCSC{T}) where T
 end
 function _provide_matrix_assembled_centralized!(mumps::Mumps{T},A::SparseMatrixCSC) where T
     mumpsc, gc_haven = mumps.mumpsc, mumps.gc_haven
-    I,J,V = findnz(A)
     if is_symmetric(mumps)
-        sym_inds = J.≥I
-        I,J,V = I[sym_inds],J[sym_inds],V[sym_inds]
+        I,J,V = findnz(triu(A))
+    else
+        I,J,V = findnz(A)
     end
     irn, jcn, a = convert.((Array{MUMPS_INT},Array{MUMPS_INT},Array{T}),(I,J,V))
     gc_haven.irn, gc_haven.jcn, gc_haven.a = irn, jcn, a
