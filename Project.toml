@@ -1,7 +1,7 @@
 name = "MUMPS3"
 uuid = "8158958c-316f-11e9-3ff7-338d4f1f622e"
 authors = ["William R Sweeney <wrsweeney2@gmail.com>"]
-version = "0.2.0"
+version = "0.3.0"
 
 [deps]
 Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
