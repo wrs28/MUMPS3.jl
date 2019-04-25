@@ -233,7 +233,7 @@ function get_rhs_unsafe!(x::SparseMatrixCSC,mumps::Mumps)
     end
     return nothing
 end
-function get_rhs_unsafe!(x::Array,mumps::Mumps)
+function get_rhs_unsafe!(x::Union{SubArray,Array},mumps::Mumps)
     @assert is_rhs_dense(mumps) "rhs is sparse, target is dense. try with sparse target"
     for i ∈ LinearIndices(x)
         x[i] = unsafe_load(mumps.mumpsc.rhs,i)
@@ -271,7 +271,7 @@ Retrieve solution `x` from `mumps` into pre-allocated array.
 
 See also: [`get_rhs!`](@ref), [`get_rhs`](@ref), [`get_sol`](@ref)
 """
-function get_sol!(x::Array,mumps::Mumps)
+function get_sol!(x::Union{SubArray,Array},mumps::Mumps)
     check_finalized(mumps)
     if mumps.mumpsc.job ∉ [3,5,6]
         @warn "mumps has not passed through a solution phase"
@@ -283,7 +283,7 @@ function get_sol!(x::Array,mumps::Mumps)
     end
     return nothing
 end
-function get_sol_unsafe!(x::Array,mumps::Mumps)
+function get_sol_unsafe!(x::Union{SubArray,Array},mumps::Mumps)
     for i ∈ LinearIndices(x)
         x[i] = unsafe_load(mumps.mumpsc.rhs,i)
     end
@@ -341,7 +341,7 @@ end
     set_schur_centralized_by_column!(mumps,schur_inds)
 
 Set up Schur complement matrix calculation for the "centralized by column"
-method suggested in the MUMS manual
+method suggested in the MUMPS manual
 
 See also: [`mumps_schur!`](@ref), [`mumps_schur`](@ref)
 """

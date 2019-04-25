@@ -67,12 +67,12 @@ end
 
 
 """
-    mumps_solve!(x,mumps)
     mumps_solve!(x,A,y; kwargs...)
+    mumps_solve!(x,mumps)
     mumps_solve!(x,mumps,y)
 
 Solve `A*x=y`, saving result in pre-allocated x.
-`mumps` must have previously been provided a matrix `A`.
+If `mumps` is given, must have previously been provided a matrix `A`.
 If `y` is not given, `mumps` must have previously been provided `y`
 
 See also: [`mumps_solve`](@ref), [`get_sol!`](@ref), [`get_sol`](@ref)
@@ -92,28 +92,36 @@ function mumps_solve!(mumps::Mumps)
     invoke_mumps!(mumps)
     return nothing
 end
-function mumps_solve!(x::Array,mumps::Mumps)
+function mumps_solve!(x::AbstractArray,mumps::Mumps)
     mumps_solve!(mumps)
     get_sol!(x,mumps)
 end
-function mumps_solve!(x::Array,A::AbstractArray,rhs::AbstractArray; kwargs...)
+function mumps_solve!(x::AbstractArray,A::AbstractArray,rhs::AbstractArray; kwargs...)
     mumps = Mumps(A,rhs; kwargs...)
     suppress_display!(mumps)
-    set_icntl!(mumps,24,1)
+    set_icntl!(mumps,24,1) # null pivot -- check whether this is necessary/a good idea
     mumps_solve!(x,mumps)
     finalize!(mumps)
 end
-function mumps_solve!(x::Array,mumps::Mumps,rhs::AbstractArray)
-    mumps.mumpsc.job ∉ [3,5,6] ? provide_rhs!(mumps,rhs) : nothing
+function mumps_solve!(x::AbstractArray,mumps::Mumps,rhs::AbstractArray)
+    provide_rhs!(mumps,rhs)
+    if mumps.mumpsc.job ∈ [2,4] # if already factored, just solve
+    elseif mumps.mumpsc.job ∈ [1] # if analyzed only, factorize and solve
+        mumps.mumpsc.job=5
+    elseif mumps.mumpsc.job ∈ [3,5,6] # is solved already, reset to solve only
+        mumps.mumpsc.job=2
+    else # else analyze, factor, solve
+        mumps.mumpsc.job=6
+    end
     mumps_solve!(x,mumps)
 end
 """
-    mumps_solve(mumps) -> x
     mumps_solve(A,y) -> x
     mumps_solve(mumps,y) -> x
+    mumps_solve(mumps) -> x
 
 Solve `A*x=y`
-`mumps` must have previously been provided a matrix `A`.
+If `mumps` is given, must have previously been provided a matrix `A`.
 If only input is `mumps` must also have been provided `y`.
 
 See also: [`mumps_solve!`](@ref)
@@ -143,7 +151,8 @@ end
 """
     mumps_factorize!(mumps)
 
-LU factorize `A`. LU stored in `mumps`, but not in a particularly accessible way.
+LU factorize `A` previously provided to `mump`.
+LU stored in `mumps`, but not in a particularly accessible way.
 Useful for doing repeated solves downstream.
 
 See also: [`mumps_factorize`](@ref)
@@ -163,7 +172,8 @@ end
 """
     mumps_factorize(A) -> mumps
 
-LU factorize `A`. LU stored in `mumps`, but not in a particularly accessible way.
+LU factorize `A`.
+LU stored in `mumps`, but not in a particularly accessible way.
 Useful for doing repeated solves downstream.
 
 See also: [`mumps_factorize!`](@ref)
@@ -182,13 +192,13 @@ end
 Compute determinant of `A`, which has been previously provided to
 `mumps`.
 
-Determinant can be computed from mutated `mump` by just `det(mumps)`
+Determinant can be computed from mutated `mumps` by just `det(mumps)`
 [must have loaded LinearAlgebra].
 
 Optional keyward `discard` controls whether LU factors are discarded via
-ICNTL[31]. This is useful if you only care about determinant and don't
-want to do any further computation with mumps. Use `discard=2` to throw
-away only L. See manual for MUMPS 5.1.2.
+ICNTL[31]. This is useful if you only care about the determinant and don't
+want to do any further computation with `mumps`. Use `discard=2` to throw
+away only L. See manual for [MUMPS 5.1.2](http://mumps.enseeiht.fr/doc/userguide_5.2.0.pdf#page=42).
 
 See also: [`mumps_det`](@ref)
 """
@@ -363,6 +373,8 @@ function LinearAlgebra.ldiv!(mumps::Mumps,y)
     suppress_display!(mumps)
     if mumps.mumpsc.job < 2
         mumps_factorize!(mumps)
+    else
+        mumps.mumpsc.job=2
     end
     provide_rhs!(mumps,y)
     mumps_solve!(y,mumps)
@@ -372,8 +384,7 @@ function LinearAlgebra.ldiv!(x,mumps::Mumps,y)
     if mumps.mumpsc.job < 2
         mumps_factorize!(mumps)
     end
-    provide_rhs!(mumps,y)
-    mumps_solve!(x,mumps)
+    mumps_solve!(x,mumps,y)
 end
 function LinearAlgebra.inv(mumps::Mumps)
     suppress_display!(mumps)
