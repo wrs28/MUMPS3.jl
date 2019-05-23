@@ -1,11 +1,11 @@
-# this file mirros the relevant content of the "[sdcz]mumps_c.h" file of MUMPS 5.1.2
+# this file mirros the relevant content of the "[sdcz]mumps_c.h" file of MUMPS 5.2.0
 # there are three structs: MumpsC, which exactly mirrors the C-content,
 # GC_haven, which contains Julia references to protect the pointers passed to C
 # from gargage collection, and Mumps, which is the only one directly accessed by
 # the functions and user.
 export Mumps
 
-const MUMPS_VERSION = "5.1.2"
+const MUMPS_VERSION = "5.2.0"
 const MUMPS_VERSION_MAX_LEN = 30
 
 # mirror of structre in [sdcz]mumps_c.h
@@ -14,7 +14,7 @@ mutable struct MumpsC{TC,TR}
     par::MUMPS_INT # MANDATORY 0 host not involved in parallel factorization and solve, 1 host is involved
     job::MUMPS_INT # MANDATORY -1 initializes package, must come first, -2 terminates, 1 analysis, 2 factorization, 3 solve, 4=1&2, 5=2&3, 6=1&2&3
     comm_fortran::MUMPS_INT # MANDATORY valid MPI communicator
-    icntl::NTuple{40,MUMPS_INT}
+    icntl::NTuple{60,MUMPS_INT}
     keep::NTuple{500,MUMPS_INT}
     cntl::NTuple{15,TR}
     dkeep::NTuple{230,TR}
@@ -55,24 +55,33 @@ mutable struct MumpsC{TC,TR}
     redrhs::Ptr{TC}
     rhs_sparse::Ptr{TC}
     sol_loc::Ptr{TC}
+    rhs_loc::Ptr{TC}
 
     irhs_sparse::Ptr{MUMPS_INT}
     irhs_ptr::Ptr{MUMPS_INT}
     isol_loc::Ptr{MUMPS_INT}
+    irhs_loc::Ptr{MUMPS_INT}
+
     nrhs::MUMPS_INT
     lrhs::MUMPS_INT
     lredrhs::MUMPS_INT
     nz_rhs::MUMPS_INT
     lsol_loc::MUMPS_INT
+    nloc_rhs::MUMPS_INT
+    lrhs_loc::MUMPS_INT
+
     schur_mloc::MUMPS_INT
     schur_nloc::MUMPS_INT
     schur_lld::MUMPS_INT
+
     mblock::MUMPS_INT
     nblock::MUMPS_INT
     nprow::MUMPS_INT
     npcol::MUMPS_INT
-    info::NTuple{40,MUMPS_INT}
-    infog::NTuple{40,MUMPS_INT}
+
+    info::NTuple{80,MUMPS_INT}
+    infog::NTuple{80,MUMPS_INT}
+
     rinfo::NTuple{40,TR}
     rinfog::NTuple{40,TR}
 
@@ -94,6 +103,8 @@ mutable struct MumpsC{TC,TR}
     lwk_user    ::MUMPS_INT
     save_dir    ::NTuple{256,Cchar}
     save_prefix ::NTuple{256,Cchar}
+
+    metis_options::NTuple{40,MUMPS_INT}
 
     MumpsC{T}(sym::Int,par::Int,comm) where T = new{T,real(T)}(sym,par,-1,comm)
 end
@@ -119,9 +130,11 @@ mutable struct GC_haven{TC,TR}
     redrhs::Vector{TC}
     rhs_sparse::Vector{TC}
     sol_loc::Vector{TC}
+    rhs_loc::Vector{TC}
     irhs_sparse::Vector{MUMPS_INT}
     irhs_ptr::Vector{MUMPS_INT}
     isol_loc::Vector{MUMPS_INT}
+    irhs_loc::Vector{MUMPS_INT}
     pivnul_list::Vector{MUMPS_INT}
     mapping::Vector{MUMPS_INT}
     listvar_schur::Vector{MUMPS_INT}

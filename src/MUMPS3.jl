@@ -1,7 +1,7 @@
 """
     module MUMPS3
 
-Both low-level interface with MUMPS 5.1.2 parallel direct solver C-library
+Both low-level interface with MUMPS 5.2.0 parallel direct solver C-library
 as well as convenient wrappers for some common uses for MUMPS.
 
 The central work is done by the `Mumps` struct, which mirrors the

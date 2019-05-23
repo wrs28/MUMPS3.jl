@@ -1,417 +1,479 @@
 export display_icntl
 
-Base.show(io::IO,mumps::Mumps) = show(mumps.mumpsc)
+Base.show(io::IO,mumps::Mumps) = show(io,mumps.mumpsc)
 
 function Base.show(io::IO,mumpsc::MumpsC{TC,TR}) where {TC,TR}
-    print("Mumps{$TC,$TR}: ")
+    print(io,"Mumps{$TC,$TR}: ")
     if TC<:Float32
-        println("single precision real")
+        println(io,"single precision real")
         lib = "smumps"
     elseif TC<:Float64
-        println("double precision real")
+        println(io,"double precision real")
         lib = "dmumps"
     elseif TC<:ComplexF32
-        println("single precision complex")
+        println(io,"single precision complex")
         lib = "cmumps"
     elseif TC<:ComplexF64
-        println("double precision complex")
+        println(io,"double precision complex")
         lib = "zmumps"
     end
-    println("lib: ", lib)
-    print("job: ", mumpsc.job, " ")
-    if mumpsc.job==-2
-        println("terminate")
+    println(io,"lib: ", lib)
+    print(io,"job: ", mumpsc.job, " ")
+    if mumpsc.job==-3
+        println(io,"save/restore")
+    elseif mumpsc.job==-2
+        println(io,"terminate")
     elseif mumpsc.job==-1
-        println("initialize")
+        println(io,"initialize")
     elseif mumpsc.job==1
-        println("analyze")
+        println(io,"analyze")
     elseif mumpsc.job==2
-        println("factorize")
+        println(io,"factorize")
     elseif mumpsc.job==3
-        println("solve")
+        println(io,"solve")
     elseif mumpsc.job==4
-        println("analyze + factorize")
+        println(io,"analyze + factorize")
     elseif mumpsc.job==5
-        println("factorize + solve")
+        println(io,"factorize + solve")
     elseif mumpsc.job==6
-        println("analyze + factorize + solve")
+        println(io,"analyze + factorize + solve")
+    elseif mumpsc.job==7
+        println(io,"save")
+    elseif mumpsc.job==8
+        println(io,"restore")
     else
-        println("unrecognized")
+        println(io,"unrecognized")
     end
-    print("sym: ", mumpsc.sym)
+    print(io,"sym: ", mumpsc.sym)
     if mumpsc.sym==1
-        println(" symmetric pos def")
+        println(io," symmetric pos def")
     elseif mumpsc.sym==2
-        println(" symmetric")
+        println(io," symmetric")
     else
-        println(" unsymmetric")
+        println(io," unsymmetric")
     end
-    print("par: ", mumpsc.par)
-    mumpsc.par==0 ? println(" host not worker") : println(" host is worker ")
-    print("matrix A: ")
+    print(io,"par: ", mumpsc.par)
+    mumpsc.par==0 ? println(io," host not among workers") : println(io," host among workers ")
+    print(io,"matrix A: ")
     if has_matrix(mumpsc)
-        print("$(mumpsc.n)×$(mumpsc.n) ")
+        print(io,"$(mumpsc.n)×$(mumpsc.n) ")
         if is_matrix_assembled(mumpsc)
-            println("sparse matrix, with $(mumpsc.nnz) nonzero elements")
+            println(io,"sparse matrix, with $(mumpsc.nnz) nonzero elements")
         else
-            print("elemental matrix with $(mumpsc.nelt) element")
-            mumpsc.nelt>1 ? println("s") : println()
+            print(io,"elemental matrix with $(mumpsc.nelt) element")
+            mumpsc.nelt>1 ? println(io,"s") : println()
         end
     else
-        println("uninitialized")
+        println(io,"uninitialized")
     end
 
-    print("rhs B:")
+    print(io,"rhs B:")
     rhs_type = is_rhs_dense(mumpsc) ? "dense" : "sparse"
     nz_rhs = is_rhs_dense(mumpsc) ? "" : string(",with ",mumpsc.nz_rhs," nonzero elements")
     if has_rhs(mumpsc)
         lrhs = is_rhs_dense(mumpsc) ?  mumpsc.lrhs : mumpsc.n
         nrhs = mumpsc.nrhs
-        println(" $lrhs×$nrhs ",rhs_type," matrix", nz_rhs)
+        println(io," $lrhs×$nrhs ",rhs_type," matrix", nz_rhs)
     else
-        println(" uninitialized")
+        println(io," uninitialized")
     end
 
-    println("ICNTL settings summary: ")
+    println(io,"ICNTL settings summary: ")
     icntl_inds = [4,9,13,19,30,33]
     for i ∈ eachindex(icntl_inds)
-        print("\t")
-        display_icntl(mumpsc.icntl,icntl_inds[i],mumpsc.icntl[icntl_inds[i]])
+        print(io,"\t")
+        display_icntl(io,mumpsc.icntl,icntl_inds[i],mumpsc.icntl[icntl_inds[i]])
     end
 end
 
 function Base.show(io::IO,gc_haven::GC_haven)
-    vars = (:irn,:jcn,:a,
-            :irn_loc,:jcn_loc,:a_loc,
-            :eltptr,:eltvar,:a_elt,
-            :perm_in,:sym_in,:uns_in,
+    vars = (:irn, :jcn, :a,
+            :irn_loc, :jcn_loc, :a_loc,
+            :eltptr, :eltvar, :a_elt,
+            :perm_in, :sym_in, :uns_in,
             :colsca, :rowsca,
             :rhs, :redrhs, :rhs_sparse,
-            :sol_loc, :irhs_sparse,
-            :irhs_ptr, :isol_loc,
+            :sol_loc, :rhs_loc, :irhs_sparse,
+            :irhs_ptr, :isol_loc, :irhs_loc,
             :pivnul_list, :mapping,
             :listvar_schur, :schur, :wk_user)
-    pad = ("::\t",":\t",":\t\t",
+    pad = (":\t",":\t",":\t\t",
             ": ","\t",":\t",
             ":\t","\t",":\t",
             ": ","\t",":\t",
             ":\t",":\t",
             ":\t",":\t",":\t",
-            ": ",": ",
-            ": ",": ",
+            ": ",":",": ",
+            ": ",": ",": ",
             ": ",": ",
             ": ",":\t",": ")
     for i ∈ eachindex(vars)
-        println(vars[i],pad[i],isdefined(gc_haven,vars[i]))
+        println(io,vars[i],pad[i],isdefined(gc_haven,vars[i]))
     end
 end
 
 """
     display_icntl(mumps)
 
-Show the complete INCTL integer array of `mumps`, with descriptions
+Show the complete ICNTL integer array of `mumps`, with descriptions
 
 See also: [`set_icntl!`](@ref)
 """
-display_icntl(mumps::Mumps) = display_icntl(mumps.mumpsc.icntl)
-function display_icntl(icntl)
+display_icntl(io::IO,mumps::Mumps) = display_icntl(io,mumps.mumpsc.icntl)
+function display_icntl(io::IO,icntl)
     for i ∈ eachindex(icntl)
-        display_icntl(icntl,i,icntl[i])
+        display_icntl(io,icntl,i,icntl[i])
     end
 end
-function display_icntl(icntl,i,val)
+function display_icntl(io::IO,icntl,i,val)
     automatic = "decided by software"
-    print("$i,\t$val\t")
+    print(io,"$i,\t$val\t")
     if i==1
-        print("output stream for error messages: ")
+        print(io,"output stream for error messages: ")
         if val≤0
-            print("suppressed")
+            print(io,"suppressed")
         else
-            print("$val")
+            print(io,"$val")
         end
     elseif i==2
-        print("output stream for diagnostics, statistics, warnings: ")
+        print(io,"output stream for diagnostics, statistics, warnings: ")
         if val≤0
-            print("suppressed")
+            print(io,"suppressed")
         else
-            print("$val")
+            print(io,"$val")
         end
     elseif i==3
-        print("output stream for global info: ")
+        print(io,"output stream for global info: ")
         if val≤0
-            print("suppressed")
+            print(io,"suppressed")
         else
-            print("$val")
+            print(io,"$val")
         end
     elseif i==4
-        print("level of printing: ")
+        print(io,"level of printing: ")
         if val≤0
-            print("error, warnings, diagnostics suppressed")
+            print(io,"error, warnings, diagnostics suppressed")
         elseif val==1
-            print("only error messages")
+            print(io,"only error messages")
         elseif val==2
-            print("errors, warnings, main statistics")
+            print(io,"errors, warnings, main statistics")
         elseif val==3
-            print("errors, warnings, terse diagnostics")
+            print(io,"errors, warnings, terse diagnostics")
         else
-            print("errors, warnings, info on input, output parameters")
+            print(io,"errors, warnings, info on input, output parameters")
         end
     elseif i==5
-        print("matrix input format: ")
+        print(io,"matrix input format: ")
         if val==1
-            print("elemental")
+            print(io,"elemental")
         else
-            print("assembled")
+            print(io,"assembled")
         end
     elseif i==6
-        print("permutation and/or scaling: ")
+        print(io,"permutation and/or scaling: ")
         if val==1
-            print("number of diagonal nonzeros is maximized")
+            print(io,"number of diagonal nonzeros is maximized")
         elseif val ∈ [2,3]
-            print("smallest diagonal value is maximized")
+            print(io,"smallest diagonal value is maximized")
         elseif val==4
-            print("sum of diagonal values is maximized")
+            print(io,"sum of diagonal values is maximized")
         elseif val ∈ [5,6]
-            print("product of diagonal values is maximized")
+            print(io,"product of diagonal values is maximized")
         elseif val==7
             print(automatic)
         else
-            print("none")
+            print(io,"none")
         end
     elseif i==7
-        print("reordering for analysis: ")
+        print(io,"reordering for analysis: ")
         if val==0
-            print("Approximate Minimum Degree (AMD)")
+            print(io,"Approximate Minimum Degree (AMD)")
         elseif val==1
-            print("given by user via PERM_IN (see provide_perm_in)")
+            print(io,"given by user via PERM_IN (see provide_perm_in)")
         elseif val==2
-            print("Approximate Minimum Fill (AMF)")
+            print(io,"Approximate Minimum Fill (AMF)")
         elseif val==3
-            print("SCOTCH, if installed, else ",automatic)
+            print(io,"SCOTCH, if installed, else ",automatic)
         elseif val==4
-            print("PORD, if installed, else ",automatic)
+            print(io,"PORD, if installed, else ",automatic)
         elseif val==5
-            print("METIS, if installed, else ",automatic)
+            print(io,"METIS, if installed, else ",automatic)
         elseif val==6
-            print("Approximate Minimum Degree with quasi-dense row detection (QAMD)")
+            print(io,"Approximate Minimum Degree with quasi-dense row detection (QAMD)")
         else
             print(automatic)
         end
     elseif i==8
-        print("scaling strategy: ")
+        print(io,"scaling strategy: ")
         if val==-2
-            print("computed during analysis")
+            print(io,"computed during analysis")
         elseif val==-1
-            print("provided by user in COLSCA and ROWSCA (see provide_)")
+            print(io,"provided by user in COLSCA and ROWSCA (see provide_)")
         elseif val==1
-            print("diagonal, computed during factorization")
+            print(io,"diagonal, computed during factorization")
         elseif val==3
-            print("comlumn, computed during factorization")
+            print(io,"comlumn, computed during factorization")
         elseif val==4
-            print("row and column based on inf-norms, computed during factorization")
+            print(io,"row and column based on inf-norms, computed during factorization")
         elseif val==7
-            print("row and column iterative, computed during factorization")
+            print(io,"row and column iterative, computed during factorization")
         elseif val==8
-            print("row and column iterative, computed during factorization")
+            print(io,"row and column iterative, computed during factorization")
         elseif val==77
             print(automatic," during analysis")
         else
-            print("none")
+            print(io,"none")
         end
     elseif i==9
-        print("transposed: ")
+        print(io,"transposed: ")
         if val==1
-            print("false")
+            print(io,"false")
         else
-            print("true")
+            print(io,"true")
         end
     elseif i==10
-        print("iterative refinement: ")
+        print(io,"iterative refinement: ")
         if val<0
-            print("fixed number of iterations")
+            print(io,"fixed number of iterations")
         elseif val>0
-            print("until convergence with max number of iterations")
+            print(io,"until convergence with max number of iterations")
         else
-            print("none")
+            print(io,"none")
         end
     elseif i==11
-        print("statistics of error analysis: ")
+        print(io,"statistics of error analysis: ")
         if val==1
-            print("all (including expensive ones)")
+            print(io,"all (including expensive ones)")
         elseif val==2
-            print("main (avoid expensive ones)")
+            print(io,"main (avoid expensive ones)")
         else
-            print("none")
+            print(io,"none")
         end
     elseif i==12
-        print("ordering for symmetric: ")
-        if val==1
-            print("usual, nothing done")
+        print(io,"ordering for symmetric matrices: ")
+        if val==0
+            print(io,automatic)
         elseif val==2
-            print("on compressed graph")
+            print(io,"on compressed graph")
         elseif val==3
-            print("constrained ordering, only used with AMF (see icntl 7)")
+            print(io,"constrained ordering, only used with AMF (see icntl 7)")
         else
-            print(automatic)
+            print(io,"usual ordering, nothing done")
         end
     elseif i==13
-        print("parallelism of root node: ")
+        print(io,"parallelism of root node: ")
         if val==-1
-            print("force splitting")
+            print(io,"force splitting")
         elseif val>0
-            print("sequential factorization (ScaLAPACK not used) unless num workers > $val")
+            print(io,"sequential factorization (ScaLAPACK not used) unless num workers > $val")
         else
-            print("parallel factorization")
+            print(io,"parallel factorization")
         end
     elseif i==14
-        print("percentage increase in estimated working space: $val%")
+        print(io,"percentage increase in estimated working space: $val%")
     elseif i==18
-        print("distributed input matrix: ")
+        print(io,"distributed input matrix: ")
         if val==1
-            print("structure provided centralized, mumps returns mapping, user provides entries to mapping")
+            print(io,"structure provided centralized, mumps returns mapping, user provides entries to mapping")
         elseif val==2
-            print("structure provided centralized at analysis, entries provided to all workers at factorization")
+            print(io,"structure provided centralized at analysis, entries provided to all workers at factorization")
         elseif val==3
-            print("distributed matrix, pattern, entries provided")
+            print(io,"distributed matrix, pattern, entries provided")
         else
-            print("centralized")
+            print(io,"centralized")
         end
     elseif i==19
-        print("Schur complement: ")
+        print(io,"Schur complement: ")
         if val==1
-            print("true, Schur complement returned centralized by rows")
+            print(io,"true, Schur complement returned centralized by rows")
         elseif val ∈ [2,3]
-            print("true, Schur complement returned distributed by columns")
+            print(io,"true, Schur complement returned distributed by columns")
         else
-            print("false, complete factorization")
+            print(io,"false, complete factorization")
         end
     elseif i==20
-        print("rhs: ")
-        0<val<4 ? print("sparse, ") : nothing
+        print(io,"rhs: ")
+        0<val<4 ? print(io,"sparse, ") : nothing
         if val==1
-            print("sparsity-exploting acceleration of solution ", automatic)
+            print(io,"sparsity-exploting acceleration of solution ", automatic)
         elseif val==2
-            print("sparsity not exploited in solution")
+            print(io,"sparsity not exploited in solution")
         elseif val==3
-            print("sparsity exploited to accelerate solution")
+            print(io,"sparsity exploited to accelerate solution")
         else
-            print("dense")
+            print(io,"dense")
         end
     elseif i==21
-        print("distribution of solution vectors: ")
+        print(io,"distribution of solution vectors: ")
         if val==1
-            print("distributed")
+            print(io,"distributed")
         else
-            print("assembled and stored in centralized RHS")
+            print(io,"assembled and stored in centralized RHS")
         end
     elseif i==22
-        print("out-of-core (OOC) factorization and solve: ")
+        print(io,"out-of-core (OOC) factorization and solve: ")
         if val==0
-            print("false")
+            print(io,"false")
         elseif val==1
-            print("true")
+            print(io,"true")
         else
             @warn "not sure this is a valid setting"
         end
     elseif i==23
-        print("max size (in MB) of working memory per worker: ")
+        print(io,"max size (in MB) of working memory per worker: ")
         if val>0
-            print("$val MB")
+            print(io,"$val MB")
         else
             print(automatic)
         end
     elseif i==24
-        print("null pivot row detection: ")
+        print(io,"null pivot row detection: ")
         if val==1
-            print("true")
+            print(io,"true")
         else
-            print("false. if null pivot present, will result in error INFO(1)=-10")
+            print(io,"false. if null pivot present, will result in error INFO(1)=-10")
         end
     elseif i==25
-        print("defecient matrix and null space basis: ")
+        print(io,"defecient matrix and null space basis: ")
         if val==-1
-            print("complete null space basis computed")
+            print(io,"complete null space basis computed")
         elseif val==0
-            print("normal solution phase. if matrix found singular, one possible solution returned")
+            print(io,"normal solution phase. if matrix found singular, one possible solution returned")
         else
-            print("$val-th vector of null space basis computed")
+            print(io,"$val-th vector of null space basis computed")
         end
     elseif i==26
-        print("if Schur, solution phase: ")
+        print(io,"if Schur, solution phase: ")
         if val==1
-            print("condense/reduce rhs on Schur")
+            print(io,"condense/reduce rhs on Schur")
         elseif val==2
-            print("expand Schur solution on complete solution variables")
+            print(io,"expand Schur solution on complete solution variables")
         else
-            print("standard solution")
+            print(io,"standard solution")
         end
     elseif i==27
-        print("blocking size for multiple rhs: ")
+        print(io,"blocking size for multiple rhs: ")
         if val<0
             print(automatic)
         elseif val==0
-            print("no blocking, same as 1")
+            print(io,"no blocking, same as 1")
         else
-            print("blocksize=min(NRHS,$val)")
+            print(io,"blocksize=min(NRHS,$val)")
         end
     elseif i==28
-        print("ordering computation: ")
+        print(io,"ordering computation: ")
         if val==1
-            print("sequential")
+            print(io,"sequential")
         elseif val==2
-            print("parallel")
+            print(io,"parallel")
         else
             print(automatic)
         end
     elseif i==29
-        print("parallel ordering tool: ")
+        print(io,"parallel ordering tool: ")
         if val==1
-            print("PT-SCOTCH, if available")
+            print(io,"PT-SCOTCH, if available")
         elseif val==2
-            print("PARMETIS, if available")
+            print(io,"PARMETIS, if available")
         else
             print(automatic)
         end
     elseif i==30
-        print("compute entries of A⁻¹: ")
+        print(io,"compute entries of A⁻¹: ")
         if val==1
-            print("true")
+            print(io,"true")
         else
-            print("false")
+            print(io,"false")
         end
     elseif i==31
-        print("discarded factors: ")
+        print(io,"discarded factors: ")
         if val==1
-            print("all")
+            print(io,"all")
         elseif val==2
-            print("U, for unsymmetric")
+            print(io,"U, for unsymmetric")
         else
-            print("none, except for ooc factorization of unsymmetric")
+            print(io,"none, except for ooc factorization of unsymmetric")
         end
     elseif i==32
-        print("forward elimination of rhs: ")
+        print(io,"forward elimination of rhs: ")
         if val==1
-            print("performed during factorization")
+            print(io,"performed during factorization")
         else
-            print("not performed during factorization (standard)")
+            print(io,"not performed during factorization (standard)")
         end
     elseif i==33
-        print("compute determinant: ")
+        print(io,"compute determinant: ")
         if val==0
-            print("false")
+            print(io,"false")
         else
-            print("true")
+            print(io,"true")
+        end
+    elseif i==34
+        print(io,"OOC file conservation: ")
+        if val==1
+            print(io,"not marked for deletion")
+        else
+            print(io,"marked for deletion")
         end
     elseif i==35
-        print("BLR: ")
+        print(io,"Block Low-Rank: ")
         if val==1
-            print("activated")
+            print(io,"activated, options ", automatic)
+        elseif val==2
+            print(io,"activated during factorization and solution phases")
+        elseif val==3
+            print(io,"activated during factorzation only")
         else
-            print("not activated")
+            print(io,"not activated")
         end
+    elseif i==36
+        print(io,"BLR variant: ")
+        if val==1
+            print(io, "UCFS with low-rank updates accumulation; compression is performed earlier")
+        else
+            print(io, "Standard UFSC")
+        end
+    elseif i==38
+        print(io,"Estimated compression rate of LU factors in ppt: $val")
     else
-        print("not used")
+        print(io,"not used")
     end
-    print("\n")
+    print(io,"\n")
+    return nothing
+end
+
+
+
+"""
+    display_cntl(mumps)
+
+Show the complete CNTL real array of `mumps`, with descriptions
+
+See also: [`set_cntl!`](@ref)
+"""
+display_cntl(io::IO,mumps::Mumps) = display_cntl(io,mumps.mumpsc.cntl)
+function display_cntl(io::IO,cntl)
+    for i ∈ eachindex(cntl)
+        display_icntl(io,cntl,i,cntl[i])
+    end
+end
+function display_cntl(io::IO,cntl,i,val)
+    print(io,"$i,\t$val\t")
+    if i==1
+        print(io,"relative threshold for numerical pivoting")
+    elseif i==2
+        print(io,"stopping criterion for iterative refinement")
+    elseif i==3
+        print(io,"null pivot?")
+    elseif i==4
+        print(io,"threshold for state pivoting")
+    elseif i==5
+        print(io,"fixation for null pivots")
+    elseif i==7
+        print(io,"precision of dropping parameter in BLR compression")
+    else
+        print(io,"not used")
+    end
+    print(io,"\n")
     return nothing
 end

@@ -5,6 +5,7 @@
 # inverse of A
 #
 # Any function which alters the JOB state lives here.
+const DEFAULT_FORTRAN_COMMUNICATOR = -987654
 
 export mumps_solve!, mumps_solve,
 mumps_factorize!, mumps_factorize,
@@ -29,7 +30,7 @@ They are:
 
 If not arguments are passed, create an initialized but empty instance of `Mumps`
 """
-Mumps{T}(;sym=0,par=1) where T = Mumps{T}(sym,par,-987654)
+Mumps{T}(;sym=0,par=1) where T = Mumps{T}(sym,par,DEFAULT_FORTRAN_COMMUNICATOR)
 function Mumps(A::AbstractArray{T}; kwargs...) where T
     if !haskey(kwargs,:sym)
         if issymmetric(A)

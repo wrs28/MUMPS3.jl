@@ -66,19 +66,70 @@ check_finalized(mumps::Mumps) = @assert !mumps.finalized "Mumps object already f
 """
     set_icntl!(mumps,i,val; [displaylevel=1])
 
-Set the integer control array according to ICNTL[i]=val
+Set the integer control parameters according to ICNTL[i]=val
 
 See also: [`display_icntl`](@ref)
 """
 function set_icntl!(mumps::Mumps,i::Int,val::Int; displaylevel=mumps.mumpsc.icntl[4]-1)
     icntl = mumps.mumpsc.icntl
     mumps.mumpsc.icntl = (icntl[1:i-1]...,convert(MUMPS_INT,val),icntl[i+1:end]...)
-    displaylevel>0 ? display_icntl(mumps.mumpsc.icntl,i,val) : nothing
+    displaylevel>0 ? display_icntl(stdout,mumps.mumpsc.icntl,i,val) : nothing
     return nothing
 end
 
 
-set_job!(mumps::Mumps,i) = mumps.mumpsc.job=i
+"""
+    set_cntl!(mumps,i,val; [displaylevel=1])
+
+Set the real/complex control parameters according to CNTL[i]=val
+
+See also: [`display_cntl`](@ref)
+"""
+function set_cntl!(mumps::Mumps{TC,TR},i::Int,val::Float64; displaylevel=mumps.mumpsc.icntl[4]-1) where {TC,TR}
+    cntl = mumps.mumpsc.cntl
+    mumps.mumpsc.cntl = (cntl[1:i-1]...,convert(TR,val),cntl[i+1:end]...)
+    displaylevel>0 ? display_cntl(stdout,mumps.mumpsc.cntl,i,val) : nothing
+    return nothing
+end
+
+
+"""
+    set_job!(mumps,job)
+
+Set the phase to `job`. See MUMPS manual for options.
+"""
+function set_job!(mumps::Mumps,i)
+    mumps.mumpsc.job=i
+    return nothing
+end
+
+
+"""
+    set_save_dir!(mumps,dir)
+
+set name of directory in which to store out-of-core files.
+"""
+function set_save_dir!(mumps,dir::String)
+    @assert length(dir≤255) "directory name has $(length(dir)) characters, must be ≤255"
+    i = length(dir+1)
+    save_dir = mumps.mumpsc.save_dir
+    mumps.mumpsc.save_dir = (dir...,'\0',save_dir[i+2:end]...)
+    return nothing
+end
+
+
+"""
+    set_save_prefix!(mumps,dir)
+
+prefix for out-of-core files.
+"""
+function set_save_prefix!(mumps,prefix::String)
+    @assert length(prefix) "prefix name has $(length(prefix)) characters, must be ≤255"
+    i = length(prefix+1)
+    save_prefix = mumps.mumpsc.save_prefix
+    mumps.mumpsc.save_prefix = (prefix...,'\0',save_prefix[i+2:end]...)
+    return nothing
+end
 
 
 """
