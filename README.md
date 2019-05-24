@@ -4,16 +4,9 @@ The MUMPS3 package provides a Julia interface with the [MUMPS 5.2.0](http://mump
 
 This package *does not* come with a distribution of MUMPS, and it is up to the user to provide a working MUMPS library (see MUMPS installation section).
 
-
-##### Goal and Design
-The goal of this package is to provide simultaneously the full functionality and control that [MUMPS 5.2.0 offers](http://mumps.enseeiht.fr/doc/userguide_5.1.2.pdf), while also providing intuitive high-level usage that requires next-to-no knowledge about the MUMPS API.
-
-This is done by providing a Julia structure `MumpsC{T}` which exactly matches the [SDCZ]MUMPS_STRUC_C used inside MUMPS, which is then passed to the MUMPS library. In fact this structure is itself wrapped inside another Julia structure `Mumps{T}` for the purposes of [protecting the memory used by C from Julia's garbage collection](https://docs.julialang.org/en/v1/manual/calling-c-and-fortran-code/#Garbage-Collection-Safety-1). This `Mumps{T}` structure is what is exposed to the user.
-
-##### Name
-There are already two MUMPS pacakages called [MUMPS.jl](https://github.com/JuliaSparse/MUMPS.jl) and [MUMPS.jl](https://github.com/JuliaSmoothOptimizers/MUMPS.jl), so the name-space seemed a bit crowded to me. I considered [MMR](https://www.cdc.gov/vaccines/hcp/vis/vis-statements/mmr.html) as the solution to the MUMPS problem, but this nomenclature has some obvious problems...
-
 ## Installation
+
+Two things must be installed: MUMPS3.jl and [MUMPS 5.2.0](http://mumps.enseeiht.fr).
 
 #### Installing MUMPS3.jl
 
@@ -44,7 +37,7 @@ In addition to MUMPS.jl, you will need [MPI.jl](`https://github.com/JuliaParalle
 (v1.1) pkg> add MPI
 ````
 
-#### Installing [MUMPS 5.2.0](http://mumps.enseeiht.fr)
+#### Installing [MUMPS 5.2.0](http://mumps.enseeiht.fr) (mostly for OSX)
 
 This can be a bit tricky. The source code can be downloaded [here](http://mumps.enseeiht.fr),
 but compiling and linking it into a dynamic library is awkward at best.
@@ -94,6 +87,15 @@ y = sprand(N,M,1/sqrt(N*M))
 x = mumps_solve(A,y)
 norm(A*x-y) # should be ~1-e15
 ````
+
+
+#### Goal and Design
+The goal of this package is to provide simultaneously the full functionality and control that [MUMPS 5.2.0 offers](http://mumps.enseeiht.fr/doc/userguide_5.1.2.pdf), while also providing intuitive high-level usage that requires next-to-no knowledge about the MUMPS API.
+
+This is done by providing a Julia structure `MumpsC{T}` which exactly matches the [SDCZ]MUMPS_STRUC_C used inside MUMPS, which is then passed to the MUMPS library. In fact this structure is itself wrapped inside another Julia structure `Mumps{T}` for the purposes of [protecting the memory used by C from Julia's garbage collection](https://docs.julialang.org/en/v1/manual/calling-c-and-fortran-code/#Garbage-Collection-Safety-1). This `Mumps{T}` structure is what is exposed to the user.
+
+#### Name
+There are already two MUMPS pacakages called [MUMPS.jl](https://github.com/JuliaSparse/MUMPS.jl) and [MUMPS.jl](https://github.com/JuliaSmoothOptimizers/MUMPS.jl), so the name-space seemed a bit crowded to me. I considered [MMR](https://www.cdc.gov/vaccines/hcp/vis/vis-statements/mmr.html) as the solution to the MUMPS problem, but this nomenclature has some obvious problems. I'm open to any suggestions.
 
 ## Basic Usage
 
