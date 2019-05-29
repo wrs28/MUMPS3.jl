@@ -91,7 +91,9 @@ norm(A*x-y) # should be ~1-e15
 #### Goal and Design
 The goal of this package is to provide simultaneously the full functionality and control that [MUMPS 5.2.0 offers](http://mumps.enseeiht.fr/doc/userguide_5.1.2.pdf), while also providing intuitive high-level usage that requires next-to-no knowledge about the MUMPS API.
 
-This is done by providing a Julia structure `MumpsC{T}` which exactly matches the [SDCZ]MUMPS_STRUC_C used inside MUMPS, which is then passed to the MUMPS library. In fact this structure is itself wrapped inside another Julia structure `Mumps{T}` for the purposes of [protecting the memory used by C from Julia's garbage collection](https://docs.julialang.org/en/v1/manual/calling-c-and-fortran-code/#Garbage-Collection-Safety-1). This `Mumps{T}` structure is what is exposed to the user.
+This is done by providing a Julia structure `MumpsC{T}` which exactly matches the [SDCZ]MUMPS_STRUC_C used inside the MUMPS C-interface.
+
+In fact this structure is itself wrapped inside another Julia structure `Mumps{T}` for the purposes of [protecting the memory used by C from Julia's garbage collection](https://docs.julialang.org/en/v1/manual/calling-c-and-fortran-code/#Garbage-Collection-Safety-1). This `Mumps{T}` structure is what is exposed to the user.
 
 #### Name
 There are already two MUMPS pacakages called [MUMPS.jl](https://github.com/JuliaSparse/MUMPS.jl) and [MUMPS.jl](https://github.com/JuliaSmoothOptimizers/MUMPS.jl), so the name-space seemed a bit crowded to me. I considered [MMR](https://www.cdc.gov/vaccines/hcp/vis/vis-statements/mmr.html) as the solution to the MUMPS problem, but this nomenclature has some obvious problems. I'm open to any suggestions.
