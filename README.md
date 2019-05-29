@@ -78,7 +78,6 @@ To get the parallel advantage in an interactive session, consider using [Pardiso
 using MUMPS3,MPI,LinearAlgebra,SparseArrays
 
 MPI.Initialized() ? nothing : MPI.Init()
-MPI.finalize_atexit()
 
 N, M = 1000, 10
 A = sparse(I,N,N) + sprand(N,N,1/N)
