@@ -337,7 +337,7 @@ See also: [`finalize`](@ref)
 """
 function initialize!(mumps::Mumps)
     suppress_display!(mumps)
-    mumps.finalized=false
+    mumps._finalized=false
     mumps.job=-1
     invoke_mumps!(mumps)
 end
@@ -356,7 +356,7 @@ function finalize!(mumps::Mumps)
     finalize_unsafe!(mumps)
 end
 function finalize_unsafe!(mumps::Mumps)
-    mumps.finalized=true
+    mumps._finalized=true
     mumps.job=-2
     invoke_mumps_unsafe!(mumps)
 end

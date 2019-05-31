@@ -1,8 +1,6 @@
 # this file mirros the relevant content of the "[sdcz]mumps_c.h" file of MUMPS 5.2.0
-# there are three structs: MumpsC, which exactly mirrors the C-content,
-# GC_haven, which contains Julia references to protect the pointers passed to C
-# from gargage collection, and Mumps, which is the only one directly accessed by
-# the functions and user.
+# `gc_haven`, contains Julia references to protect the pointers passed to C
+# from gargage collection.
 export Mumps
 
 const MUMPS_VERSION = "5.2.0"
@@ -106,14 +104,14 @@ mutable struct Mumps{TC,TR}
 
     metis_options::NTuple{40,MUMPS_INT}
 
-    gc_haven::Array{Ref,1}
-    finalized::Bool
+    _gc_haven::Array{Ref,1}
+    _finalized::Bool
 
     function Mumps{T}(sym::Int,par::Int,comm) where T
         mumps = new{T,real(T)}(sym,par,-1,comm)
         invoke_mumps_unsafe!(mumps)
-        mumps.gc_haven = Array{Ref,1}(undef,0)
-        mumps.finalized = false
+        mumps._gc_haven = Array{Ref,1}(undef,0)
+        mumps._finalized = false
         return mumps
     end
 end
