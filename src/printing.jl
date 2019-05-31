@@ -1,8 +1,6 @@
 export display_icntl
 
-Base.show(io::IO,mumps::Mumps) = show(io,mumps.mumpsc)
-
-function Base.show(io::IO,mumpsc::MumpsC{TC,TR}) where {TC,TR}
+function Base.show(io::IO,mumps::Mumps{TC,TR}) where {TC,TR}
     print(io,"Mumps{$TC,$TR}: ")
     if TC<:Float32
         println(io,"single precision real")
@@ -18,61 +16,61 @@ function Base.show(io::IO,mumpsc::MumpsC{TC,TR}) where {TC,TR}
         lib = "zmumps"
     end
     println(io,"lib: ", lib)
-    print(io,"job: ", mumpsc.job, " ")
-    if mumpsc.job==-3
+    print(io,"job: ", mumps.job, " ")
+    if mumps.job==-3
         println(io,"save/restore")
-    elseif mumpsc.job==-2
+    elseif mumps.job==-2
         println(io,"terminate")
-    elseif mumpsc.job==-1
+    elseif mumps.job==-1
         println(io,"initialize")
-    elseif mumpsc.job==1
+    elseif mumps.job==1
         println(io,"analyze")
-    elseif mumpsc.job==2
+    elseif mumps.job==2
         println(io,"factorize")
-    elseif mumpsc.job==3
+    elseif mumps.job==3
         println(io,"solve")
-    elseif mumpsc.job==4
+    elseif mumps.job==4
         println(io,"analyze + factorize")
-    elseif mumpsc.job==5
+    elseif mumps.job==5
         println(io,"factorize + solve")
-    elseif mumpsc.job==6
+    elseif mumps.job==6
         println(io,"analyze + factorize + solve")
-    elseif mumpsc.job==7
+    elseif mumps.job==7
         println(io,"save")
-    elseif mumpsc.job==8
+    elseif mumps.job==8
         println(io,"restore")
     else
         println(io,"unrecognized")
     end
-    print(io,"sym: ", mumpsc.sym)
-    if mumpsc.sym==1
+    print(io,"sym: ", mumps.sym)
+    if mumps.sym==1
         println(io," symmetric pos def")
-    elseif mumpsc.sym==2
+    elseif mumps.sym==2
         println(io," symmetric")
     else
         println(io," unsymmetric")
     end
-    print(io,"par: ", mumpsc.par)
-    mumpsc.par==0 ? println(io," host not among workers") : println(io," host among workers ")
+    print(io,"par: ", mumps.par)
+    mumps.par==0 ? println(io," host not among workers") : println(io," host among workers ")
     print(io,"matrix A: ")
-    if has_matrix(mumpsc)
-        print(io,"$(mumpsc.n)×$(mumpsc.n) ")
-        if is_matrix_assembled(mumpsc)
-            println(io,"sparse matrix, with $(mumpsc.nnz) nonzero elements")
+    if has_matrix(mumps)
+        print(io,"$(mumps.n)×$(mumps.n) ")
+        if is_matrix_assembled(mumps)
+            println(io,"sparse matrix, with $(mumps.nnz) nonzero elements")
         else
-            print(io,"elemental matrix with $(mumpsc.nelt) element")
-            mumpsc.nelt>1 ? println(io,"s") : println()
+            print(io,"elemental matrix with $(mumps.nelt) element")
+            mumps.nelt>1 ? println(io,"s") : println()
         end
     else
         println(io,"uninitialized")
     end
 
     print(io,"rhs B:")
-    rhs_type = is_rhs_dense(mumpsc) ? "dense" : "sparse"
-    nz_rhs = is_rhs_dense(mumpsc) ? "" : string(",with ",mumpsc.nz_rhs," nonzero elements")
-    if has_rhs(mumpsc)
-        lrhs = is_rhs_dense(mumpsc) ?  mumpsc.lrhs : mumpsc.n
-        nrhs = mumpsc.nrhs
+    rhs_type = is_rhs_dense(mumps) ? "dense" : "sparse"
+    nz_rhs = is_rhs_dense(mumps) ? "" : string(",with ",mumps.nz_rhs," nonzero elements")
+    if has_rhs(mumps)
+        lrhs = is_rhs_dense(mumps) ?  mumps.lrhs : mumps.n
+        nrhs = mumps.nrhs
         println(io," $lrhs×$nrhs ",rhs_type," matrix", nz_rhs)
     else
         println(io," uninitialized")
@@ -82,33 +80,7 @@ function Base.show(io::IO,mumpsc::MumpsC{TC,TR}) where {TC,TR}
     icntl_inds = [4,9,13,19,30,33]
     for i ∈ eachindex(icntl_inds)
         print(io,"\t")
-        display_icntl(io,mumpsc.icntl,icntl_inds[i],mumpsc.icntl[icntl_inds[i]])
-    end
-end
-
-function Base.show(io::IO,gc_haven::GC_haven)
-    vars = (:irn, :jcn, :a,
-            :irn_loc, :jcn_loc, :a_loc,
-            :eltptr, :eltvar, :a_elt,
-            :perm_in, :sym_in, :uns_in,
-            :colsca, :rowsca,
-            :rhs, :redrhs, :rhs_sparse,
-            :sol_loc, :rhs_loc, :irhs_sparse,
-            :irhs_ptr, :isol_loc, :irhs_loc,
-            :pivnul_list, :mapping,
-            :listvar_schur, :schur, :wk_user)
-    pad = (":\t",":\t",":\t\t",
-            ": ","\t",":\t",
-            ":\t","\t",":\t",
-            ": ","\t",":\t",
-            ":\t",":\t",
-            ":\t",":\t",":\t",
-            ": ",":",": ",
-            ": ",": ",": ",
-            ": ",": ",
-            ": ",":\t",": ")
-    for i ∈ eachindex(vars)
-        println(io,vars[i],pad[i],isdefined(gc_haven,vars[i]))
+        display_icntl(io,mumps.icntl,icntl_inds[i],mumps.icntl[icntl_inds[i]])
     end
 end
 
@@ -119,7 +91,7 @@ Show the complete ICNTL integer array of `mumps`, with descriptions
 
 See also: [`set_icntl!`](@ref)
 """
-display_icntl(io::IO,mumps::Mumps) = display_icntl(io,mumps.mumpsc.icntl)
+display_icntl(io::IO,mumps::Mumps) = display_icntl(io,mumps.mumps.icntl)
 function display_icntl(io::IO,icntl)
     for i ∈ eachindex(icntl)
         display_icntl(io,icntl,i,icntl[i])
@@ -451,7 +423,7 @@ Show the complete CNTL real array of `mumps`, with descriptions
 
 See also: [`set_cntl!`](@ref)
 """
-display_cntl(io::IO,mumps::Mumps) = display_cntl(io,mumps.mumpsc.cntl)
+display_cntl(io::IO,mumps::Mumps) = display_cntl(io,mumps.mumps.cntl)
 function display_cntl(io::IO,cntl)
     for i ∈ eachindex(cntl)
         display_icntl(io,cntl,i,cntl[i])

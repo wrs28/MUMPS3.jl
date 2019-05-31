@@ -26,20 +26,23 @@ initialized.
 
 See also: [`invoke_mumps!`](@ref)
 """
-invoke_mumps_unsafe!(mumps::Mumps) = invoke_mumps_unsafe!(mumps.mumpsc)
-@inline function invoke_mumps_unsafe!(mumpsc::MumpsC{TC,TR}) where {TC,TR}
+@inline function invoke_mumps_unsafe!(mumps::Mumps{TC,TR}) where {TC,TR}
     @assert MPI.Initialized() "must call MPI.Init() exactly once before calling mumps"
     if TC==Float32
         cfun = :smumps_c
+        LIB = LIB_S
     elseif TC==Float64
         cfun = :dmumps_c
+        LIB = LIB_D
     elseif TC==ComplexF32
         cfun = :cmumps_c
+        LIB = LIB_C
     elseif TC==ComplexF64
         cfun = :zmumps_c
+        LIB = LIB_Z
     end
     sym = dlsym(LIB,cfun)
-    ccall(sym,Cvoid,(Ref{MumpsC{TC,TR}},), mumpsc)
+    ccall(sym,Cvoid,(Ref{Mumps{TC,TR}},), mumps)
     return nothing
 end
 """
@@ -60,7 +63,11 @@ function invoke_mumps!(mumps::Mumps)
     check_finalized(mumps)
     invoke_mumps_unsafe!(mumps)
 end
-check_finalized(mumps::Mumps) = @assert !mumps.finalized "Mumps object already finalized"
+function check_finalized(mumps::Mumps)
+    if mumps.finalized
+        throw(ErrorException("Mumps object already finalized"))
+    end
+end
 
 
 """
@@ -70,10 +77,10 @@ Set the integer control parameters according to ICNTL[i]=val
 
 See also: [`display_icntl`](@ref)
 """
-function set_icntl!(mumps::Mumps,i::Int,val::Int; displaylevel=mumps.mumpsc.icntl[4]-1)
-    icntl = mumps.mumpsc.icntl
-    mumps.mumpsc.icntl = (icntl[1:i-1]...,convert(MUMPS_INT,val),icntl[i+1:end]...)
-    displaylevel>0 ? display_icntl(stdout,mumps.mumpsc.icntl,i,val) : nothing
+function set_icntl!(mumps::Mumps,i::Int,val::Int; displaylevel=mumps.icntl[4]-1)
+    icntl = mumps.icntl
+    mumps.icntl = (icntl[1:i-1]...,convert(MUMPS_INT,val),icntl[i+1:end]...)
+    displaylevel>0 ? display_icntl(stdout,mumps.icntl,i,val) : nothing
     return nothing
 end
 
@@ -85,10 +92,10 @@ Set the real/complex control parameters according to CNTL[i]=val
 
 See also: [`display_cntl`](@ref)
 """
-function set_cntl!(mumps::Mumps{TC,TR},i::Int,val::Float64; displaylevel=mumps.mumpsc.icntl[4]-1) where {TC,TR}
-    cntl = mumps.mumpsc.cntl
-    mumps.mumpsc.cntl = (cntl[1:i-1]...,convert(TR,val),cntl[i+1:end]...)
-    displaylevel>0 ? display_cntl(stdout,mumps.mumpsc.cntl,i,val) : nothing
+function set_cntl!(mumps::Mumps{TC,TR},i::Int,val::Float64; displaylevel=mumps.icntl[4]-1) where {TC,TR}
+    cntl = mumps.cntl
+    mumps.cntl = (cntl[1:i-1]...,convert(TR,val),cntl[i+1:end]...)
+    displaylevel>0 ? display_cntl(stdout,mumps.cntl,i,val) : nothing
     return nothing
 end
 
@@ -99,7 +106,7 @@ end
 Set the phase to `job`. See MUMPS manual for options.
 """
 function set_job!(mumps::Mumps,i)
-    mumps.mumpsc.job=i
+    mumps.job=i
     return nothing
 end
 
@@ -112,8 +119,8 @@ set name of directory in which to store out-of-core files.
 function set_save_dir!(mumps,dir::String)
     @assert length(dir≤255) "directory name has $(length(dir)) characters, must be ≤255"
     i = length(dir+1)
-    save_dir = mumps.mumpsc.save_dir
-    mumps.mumpsc.save_dir = (dir...,'\0',save_dir[i+2:end]...)
+    save_dir = mumps.save_dir
+    mumps.save_dir = (dir...,'\0',save_dir[i+2:end]...)
     return nothing
 end
 
@@ -126,8 +133,8 @@ prefix for out-of-core files.
 function set_save_prefix!(mumps,prefix::String)
     @assert length(prefix) "prefix name has $(length(prefix)) characters, must be ≤255"
     i = length(prefix+1)
-    save_prefix = mumps.mumpsc.save_prefix
-    mumps.mumpsc.save_prefix = (prefix...,'\0',save_prefix[i+2:end]...)
+    save_prefix = mumps.save_prefix
+    mumps.save_prefix = (prefix...,'\0',save_prefix[i+2:end]...)
     return nothing
 end
 
@@ -149,10 +156,10 @@ function provide_matrix!(mumps::Mumps{T},A::AbstractArray{TA}) where {T,TA}
         @warn "matrix with element type $TA will attempt be converted to Mumps type $T"
     end
     if is_matrix_assembled(mumps)
-        typeof(A)<:SparseMatrixCSC ? nothing : (@warn "matrix is dense, but ICNTL[5]=$(mumps.mumpsc.icntl[5]) indicates assembled. attempting to convert matrix to sparse")
+        typeof(A)<:SparseMatrixCSC ? nothing : (@warn "matrix is dense, but ICNTL[5]=$(mumps.icntl[5]) indicates assembled. attempting to convert matrix to sparse")
         _provide_matrix_assembled!(mumps,convert(SparseMatrixCSC,A))
     else
-        !(typeof(A)<:SparseMatrixCSC) ? nothing : (@warn "matrix is sparse, but ICNTL[5]=$(mumps.mumpsc.icntl[5]) indicates elemental. attempting to convert matrix to dense")
+        !(typeof(A)<:SparseMatrixCSC) ? nothing : (@warn "matrix is sparse, but ICNTL[5]=$(mumps.icntl[5]) indicates elemental. attempting to convert matrix to dense")
         _provide_matrix_elemental!(mumps,convert(Matrix,A))
     end
 end
@@ -164,17 +171,16 @@ function _provide_matrix_assembled!(mumps::Mumps,A::SparseMatrixCSC{T}) where T
     end
 end
 function _provide_matrix_assembled_centralized!(mumps::Mumps{T},A::SparseMatrixCSC) where T
-    mumpsc, gc_haven = mumps.mumpsc, mumps.gc_haven
     if is_symmetric(mumps)
         I,J,V = findnz(triu(A))
     else
         I,J,V = findnz(A)
     end
     irn, jcn, a = convert.((Array{MUMPS_INT},Array{MUMPS_INT},Array{T}),(I,J,V))
-    gc_haven.irn, gc_haven.jcn, gc_haven.a = irn, jcn, a
-    mumpsc.irn, mumpsc.jcn, mumpsc.a = pointer.((irn,jcn,a))
-    mumpsc.n = A.n
-    mumpsc.nnz = length(V)
+    mumps.irn, mumps.jcn, mumps.a = pointer.((irn,jcn,a))
+    mumps.n = A.n
+    mumps.nnz = length(V)
+    append!(mumps.gc_haven,[Ref(irn),Ref(jcn),Ref(a)])
     return nothing
 end
 function _provide_matrix_assembled_distributed!(mumps::Mumps{T},A::SparseMatrixCSC) where T
@@ -182,20 +188,18 @@ function _provide_matrix_assembled_distributed!(mumps::Mumps{T},A::SparseMatrixC
     return nothing
 end
 function _provide_matrix_elemental!(mumps::Mumps{T},A::Array) where T
-    mumpsc, gc_haven = mumps.mumpsc, mumps.gc_haven
-    mumpsc.n = size(A,1)
-    mumpsc.nelt = 1
-    eltptr = convert.(MUMPS_INT,[1,mumpsc.n+1])
-    eltvar = convert.(MUMPS_INT,collect(1:mumpsc.n))
-    gc_haven.eltptr, gc_haven.eltvar = eltptr, eltvar
-    mumpsc.eltptr, mumpsc.eltvar = pointer(eltptr), pointer(eltvar)
+    mumps.n = size(A,1)
+    mumps.nelt = 1
+    eltptr = convert.(MUMPS_INT,[1,mumps.n+1])
+    eltvar = convert.(MUMPS_INT,collect(1:mumps.n))
+    mumps.eltptr, mumps.eltvar = pointer.(eltptr, eltvar)
     if is_symmetric(mumps)
-        a_elt = convert.(T,[A[i,j] for i ∈ 1:mumpsc.n for j ∈ 1:i])
+        a_elt = convert.(T,[A[i,j] for i ∈ 1:mumps.n for j ∈ 1:i])
     else
         a_elt = convert.(T,A[:])
     end
-    gc_haven.a_elt = a_elt
-    mumpsc.a_elt = pointer(a_elt)
+    mumps.a_elt = pointer(a_elt)
+    append!(mumps.gc_haven,[Ref(eltptr),Ref(eltvar),Ref(a_elt)])
     return nothing
 end
 
@@ -220,38 +224,33 @@ function provide_rhs!(mumps::Mumps,rhs::AbstractMatrix)
     end
 end
 function provide_rhs_sparse!(mumps::Mumps{T},rhs::AbstractMatrix) where T
-    gc_haven, mumpsc = mumps.gc_haven, mumps.mumpsc
     rhs = convert(SparseMatrixCSC,rhs)
 
-    mumpsc.nz_rhs = length(rhs.nzval)
-    mumpsc.nrhs = size(rhs,2)
+    mumps.nz_rhs = length(rhs.nzval)
+    mumps.nrhs = size(rhs,2)
 
     rhs_sparse = convert.(T,rhs.nzval)
     irhs_sparse = convert.(MUMPS_INT,rhs.rowval)
     irhs_ptr = convert.(MUMPS_INT,rhs.colptr)
 
-    gc_haven.rhs_sparse = rhs_sparse
-    gc_haven.irhs_sparse = irhs_sparse
-    gc_haven.irhs_ptr = irhs_ptr
-
-    mumpsc.rhs_sparse = pointer(rhs_sparse)
-    mumpsc.irhs_sparse = pointer(irhs_sparse)
-    mumpsc.irhs_ptr = pointer(irhs_ptr)
+    mumps.rhs_sparse = pointer(rhs_sparse)
+    mumps.irhs_sparse = pointer(irhs_sparse)
+    mumps.irhs_ptr = pointer(irhs_ptr)
     if is_sol_central(mumps)
         y = fill(convert(T,NaN),prod(size(rhs)))
-        gc_haven.rhs = y
-        mumpsc.rhs = pointer(y)
-        mumpsc.lrhs = size(rhs,1)
+        mumps.rhs = pointer(y)
+        mumps.lrhs = size(rhs,1)
+        push!(mumps.gc_haven,Ref(y))
     end
+    append!(mumps.gc_haven,[Ref(rhs_sparse),Ref(irhs_sparse),Ref(irhs_ptr)])
     return nothing
 end
 function provide_rhs_dense!(mumps::Mumps{T},rhs::AbstractMatrix) where T
-    gc_haven, mumpsc = mumps.gc_haven, mumps.mumpsc
     y = convert(Matrix{T},rhs)[:]
-    gc_haven.rhs = y
-    mumpsc.rhs = pointer(y)
-    mumpsc.lrhs = size(rhs,1)
-    mumpsc.nrhs = size(rhs,2)
+    mumps.rhs = pointer(y)
+    mumps.lrhs = size(rhs,1)
+    mumps.nrhs = size(rhs,2)
+    push!(mumps.gc_haven,Ref(y))
     return nothing
 end
 provide_rhs!(mumps::Mumps,rhs::AbstractVector) = provide_rhs!(mumps,repeat(rhs,1,1))
@@ -276,18 +275,18 @@ end
 function get_rhs_unsafe!(x::SparseMatrixCSC,mumps::Mumps)
     @assert !is_rhs_dense(mumps) "rhs is dense, target is sparse. try with dense target"
     for i ∈ LinearIndices(x.colptr)
-        x.colptr[i] = unsafe_load(mumps.mumpsc.irhs_ptr,i)
+        x.colptr[i] = unsafe_load(mumps.irhs_ptr,i)
     end
     for i ∈ LinearIndices(x.rowval)
-        x.rowval[i] = unsafe_load(mumps.mumpsc.irhs_sparse,i)
-        x.nzval[i] = unsafe_load(mumps.mumpsc.rhs_sparse,i)
+        x.rowval[i] = unsafe_load(mumps.irhs_sparse,i)
+        x.nzval[i] = unsafe_load(mumps.rhs_sparse,i)
     end
     return nothing
 end
 function get_rhs_unsafe!(x::Union{SubArray,Array},mumps::Mumps)
     @assert is_rhs_dense(mumps) "rhs is sparse, target is dense. try with sparse target"
     for i ∈ LinearIndices(x)
-        x[i] = unsafe_load(mumps.mumpsc.rhs,i)
+        x[i] = unsafe_load(mumps.s,i)
     end
     return nothing
 end
@@ -299,15 +298,15 @@ Retrieve right hand side from `mumps`
 See also: [`get_rhs!`](@ref), [`get_sol!`](@ref), [`get_sol`](@ref)
 """
 function get_rhs(mumps::Mumps{T}) where T
-    n = mumps.mumpsc.nrhs
+    n = mumps.nrhs
     if !is_rhs_dense(mumps)
-        m = mumps.mumpsc.n
-        colptr = ones(MUMPS_INT,mumps.mumpsc.nrhs+1)
-        rowval = ones(MUMPS_INT,mumps.mumpsc.nz_rhs)
-        nzval = Array{T}(undef,mumps.mumpsc.nz_rhs)
+        m = mumps.n
+        colptr = ones(MUMPS_INT,mumps.nrhs+1)
+        rowval = ones(MUMPS_INT,mumps.nz_rhs)
+        nzval = Array{T}(undef,mumps.nz_rhs)
         x = SparseMatrixCSC(m,n,colptr,rowval,nzval)
     else
-        m = mumps.mumpsc.lrhs
+        m = mumps.lrhs
         x = Array{T}(undef,m,n)
     end
     get_rhs!(x,mumps)
@@ -324,7 +323,7 @@ See also: [`get_rhs!`](@ref), [`get_rhs`](@ref), [`get_sol`](@ref)
 """
 function get_sol!(x::Union{SubArray,Array},mumps::Mumps)
     check_finalized(mumps)
-    if mumps.mumpsc.job ∉ [3,5,6]
+    if mumps.job ∉ [3,5,6]
         @warn "mumps has not passed through a solution phase"
     end
     if has_rhs(mumps)
@@ -336,7 +335,7 @@ function get_sol!(x::Union{SubArray,Array},mumps::Mumps)
 end
 function get_sol_unsafe!(x::Union{SubArray,Array},mumps::Mumps)
     for i ∈ LinearIndices(x)
-        x[i] = unsafe_load(mumps.mumpsc.rhs,i)
+        x[i] = unsafe_load(mumps.rhs,i)
     end
     return nothing
 end
@@ -348,10 +347,10 @@ Retrieve solution from `mumps`
 See also: [`get_rhs!`](@ref), [`get_rhs`](@ref), [`get_sol!`](@ref)
 """
 function get_sol(mumps::Mumps{T}) where T
-    if mumps.mumpsc.job ∉ [3,5,6]
+    if mumps.job ∉ [3,5,6]
         @warn "mumps has not passed through a solution phase"
     end
-    x = Array{T}(undef,mumps.mumpsc.lrhs,mumps.mumpsc.nrhs)
+    x = Array{T}(undef,mumps.lrhs,mumps.nrhs)
     get_sol!(x,mumps)
     return x
 end
@@ -370,7 +369,7 @@ function get_schur_complement!(S,mumps::Mumps)
 end
 function get_schur_complement_unsafe!(S,mumps::Mumps)
     for i ∈ LinearIndices(S)
-        S[i] = unsafe_load(mumps.mumpsc.schur,i)
+        S[i] = unsafe_load(mumps.schur,i)
     end
     return nothing
 end
@@ -382,7 +381,7 @@ Retrieve Schur complement matrix `S` from `mumps`
 See also: [`get_schur_complement!`](@ref), [`mumps_schur!`](@ref), [`mumps_schur`](@ref)
 """
 function get_schur_complement(mumps::Mumps{T}) where T
-    S = Array{T}(undef,mumps.mumpsc.size_schur,mumps.mumpsc.size_schur)
+    S = Array{T}(undef,mumps.size_schur,mumps.size_schur)
     get_schur_complement!(S,mumps)
     return S
 end
@@ -397,20 +396,18 @@ method suggested in the MUMPS manual
 See also: [`mumps_schur!`](@ref), [`mumps_schur`](@ref)
 """
 function set_schur_centralized_by_column!(mumps::Mumps{T},schur_inds::AbstractArray{Int}) where T
-    gc_haven, mumpsc = mumps.gc_haven, mumps.mumpsc
-    mumpsc.size_schur = length(schur_inds)
+    mumps.size_schur = length(schur_inds)
     listvar_schur = convert.(MUMPS_INT,schur_inds)
-    gc_haven.listvar_schur = listvar_schur
-    mumpsc.listvar_schur = pointer(listvar_schur)
-    mumpsc.nprow = 1
-    mumpsc.npcol = 1
-    mumpsc.mblock = 100
-    mumpsc.nblock = 100
-    mumpsc.schur_lld = mumpsc.size_schur
-    schur = Array{T}(undef,mumps.mumpsc.size_schur^2)
-    gc_haven.schur = schur
-    mumpsc.schur = pointer(schur)
+    mumps.listvar_schur = pointer(listvar_schur)
+    mumps.nprow = 1
+    mumps.npcol = 1
+    mumps.mblock = 100
+    mumps.nblock = 100
+    mumps.schur_lld = mumps.size_schur
+    schur = Array{T}(undef,mumps.size_schur^2)
+    mumps.schur = pointer(schur)
     set_icntl!(mumps,19,3)
+    append!(mumps.gc_haven,[Ref(listvar_schur),Ref(schur)])
 end
 
 
@@ -420,9 +417,9 @@ function LinearAlgebra.det(mumps::Mumps{T}) where T
         d = T<:Complex ? complex(NaN,NaN) : NaN
     else
         if T<:Complex
-            d = complex(mumps.mumpsc.rinfog[12],mumps.mumpsc.rinfog[13])*2^mumps.mumpsc.infog[34]
+            d = complex(mumps.rinfog[12],mumps.rinfog[13])*2^mumps.infog[34]
         else
-            d = mumps.mumpsc.rinfog[12]*2^mumps.mumpsc.infog[34]
+            d = mumps.rinfog[12]*2^mumps.infog[34]
         end
     end
     return convert(T,d)
@@ -432,37 +429,25 @@ end
 ####################################################################
 ### auxilliary functions
 ####################################################################
-is_matrix_assembled(mumps::Mumps) = is_matrix_assembled(mumps.mumpsc)
-is_matrix_assembled(mumpsc::MumpsC) = !(mumpsc.icntl[5] ∈ [1])
+is_matrix_assembled(mumps::Mumps) = !(mumps.icntl[5] ∈ [1])
 
-is_matrix_distributed(mumps::Mumps) = is_matrix_distributed(mumps.mumpsc)
-is_matrix_distributed(mumpsc::MumpsC) = mumpsc.icntl[18] ∈ [1,2,3]
+is_matrix_distributed(mumps::Mumps) = mumps.icntl[18] ∈ [1,2,3]
 
-is_rhs_dense(mumps::Mumps) = is_rhs_dense(mumps.mumpsc)
-is_rhs_dense(mumpsc::MumpsC) = mumpsc.icntl[20] ∉ [1,2,3]
+is_rhs_dense(mumps::Mumps) = mumps.icntl[20] ∉ [1,2,3]
 
-is_sol_central(mumps::Mumps) = is_sol_central(mumps.mumpsc)
-is_sol_central(mumpsc::MumpsC) = mumpsc.icntl[21] ∉ [1]
+is_sol_central(mumps::Mumps) = mumps.icntl[21] ∉ [1]
 
-has_det(mumps::Mumps) = has_det(mumps.mumpsc)
-has_det(mumpsc::MumpsC) = mumpsc.icntl[33] ∉ [0]
+has_det(mumps::Mumps) = mumps.icntl[33] ∉ [0]
 
-is_symmetric(mumps::Mumps) = is_symmetric(mumps.mumpsc)
-is_symmetric(mumpsc::MumpsC) = mumpsc.sym ∈ [1,2]
+is_symmetric(mumps::Mumps) = mumps.sym ∈ [1,2]
 
-is_posdef(mumps::Mumps) = is_posdef(mumps.mumpsc)
-is_posdef(mumpsc::MumpsC) = mumpsc.sym ∈ [1]
+is_posdef(mumps::Mumps) = mumps.sym ∈ [1]
 
-has_matrix(mumps::Mumps) = has_matrix(mumps.mumpsc)
-has_matrix(mumpsc::MumpsC) = mumpsc.n > 0
+has_matrix(mumps::Mumps) = mumps.n > 0
 
-has_rhs(mumps::Mumps) = has_rhs(mumps.mumpsc)
-has_rhs(mumpsc::MumpsC) = mumpsc.nrhs*mumpsc.lrhs>0 || mumpsc.nz_rhs>0
+has_rhs(mumps::Mumps) = mumps.nrhs*mumps.lrhs>0 || mumps.nz_rhs>0
 
-has_schur(mumps::Mumps) = has_schur(mumps.mumpsc)
-has_schur(mumpsc::MumpsC) = mumpsc.size_schur > 0
+has_schur(mumps::Mumps) = mumps.size_schur > 0
 
 LinearAlgebra.issymmetric(mumps::Mumps) = is_symmetric(mumps)
-LinearAlgebra.issymmetric(mumpsc::MumpsC) = is_symmetric(mumpsc)
 LinearAlgebra.isposdef(mumps::Mumps) = is_posdef(mumps)
-LinearAlgebra.isposdef(mumpsc::MumpsC) = is_posdef(mumpsc)

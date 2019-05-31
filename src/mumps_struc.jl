@@ -9,7 +9,7 @@ const MUMPS_VERSION = "5.2.0"
 const MUMPS_VERSION_MAX_LEN = 30
 
 # mirror of structre in [sdcz]mumps_c.h
-mutable struct MumpsC{TC,TR}
+mutable struct Mumps{TC,TR}
     sym::MUMPS_INT # MANDATORY 0 for unsymmetric, 1 for symmetric and posdef, 2 for general symmetric. All others treated as 0
     par::MUMPS_INT # MANDATORY 0 host not involved in parallel factorization and solve, 1 host is involved
     job::MUMPS_INT # MANDATORY -1 initializes package, must come first, -2 terminates, 1 analysis, 2 factorization, 3 solve, 4=1&2, 5=2&3, 6=1&2&3
@@ -106,57 +106,15 @@ mutable struct MumpsC{TC,TR}
 
     metis_options::NTuple{40,MUMPS_INT}
 
-    MumpsC{T}(sym::Int,par::Int,comm) where T = new{T,real(T)}(sym,par,-1,comm)
-end
-
-
-# structure to store chucnks of data to keep it safe from Julia gc
-mutable struct GC_haven{TC,TR}
-    irn::Vector{MUMPS_INT}
-    jcn::Vector{MUMPS_INT}
-    a::Vector{TC}
-    irn_loc::Vector{MUMPS_INT}
-    jcn_loc::Vector{MUMPS_INT}
-    a_loc::Vector{TC}
-    eltptr::Vector{MUMPS_INT}
-    eltvar::Vector{MUMPS_INT}
-    a_elt::Vector{TC}
-    perm_in::Vector{MUMPS_INT}
-    sym_in::Vector{MUMPS_INT}
-    uns_in::Vector{MUMPS_INT}
-    colsca::Vector{TR}
-    rowsca::Vector{TR}
-    rhs::Vector{TC}
-    redrhs::Vector{TC}
-    rhs_sparse::Vector{TC}
-    sol_loc::Vector{TC}
-    rhs_loc::Vector{TC}
-    irhs_sparse::Vector{MUMPS_INT}
-    irhs_ptr::Vector{MUMPS_INT}
-    isol_loc::Vector{MUMPS_INT}
-    irhs_loc::Vector{MUMPS_INT}
-    pivnul_list::Vector{MUMPS_INT}
-    mapping::Vector{MUMPS_INT}
-    listvar_schur::Vector{MUMPS_INT}
-    schur::Vector{TC}
-    wk_user::Vector{TC}
-
-    GC_haven{T}() where T = new{T,real(T)}()
-end
-
-
-# structure used througout package, which contains the mumps struct as well as
-# a struct to hold data to keep it safe from garbage collection (due to necessity)
-# of passing pointers to MUMPS that are not safe from Julia gc
-mutable struct Mumps{TC,TR}
-    mumpsc::MumpsC{TC,TR}
-    gc_haven::GC_haven{TC,TR}
+    gc_haven::Array{Ref,1}
     finalized::Bool
 
     function Mumps{T}(sym::Int,par::Int,comm) where T
-        mumpsc = MumpsC{T}(sym,par,comm)
-        invoke_mumps_unsafe!(mumpsc)
-        new{T,real(T)}(mumpsc,GC_haven{T}(),false)
+        mumps = new{T,real(T)}(sym,par,-1,comm)
+        invoke_mumps_unsafe!(mumps)
+        mumps.gc_haven = Array{Ref,1}(undef,0)
+        mumps.finalized = false
+        return mumps
     end
 end
 
@@ -166,6 +124,6 @@ function Base.real(T::TypeVar)
     if T<:Number
         return real(T)
     else
-        throw(ArgumentError("real not defined for type $T"))
+        throw(DomainError("real not defined for type $T"))
     end
 end

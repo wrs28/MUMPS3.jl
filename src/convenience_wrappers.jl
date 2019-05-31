@@ -81,14 +81,14 @@ See also: [`mumps_solve`](@ref), [`get_sol!`](@ref), [`get_sol`](@ref)
 function mumps_solve!(mumps::Mumps)
     @assert has_matrix(mumps) "matrix not yet provided to mumps object"
     @assert has_rhs(mumps) "rhs not yet provided to mumps object"
-    if mumps.mumpsc.job ∈ [2,4] # if already factored, just solve
-        mumps.mumpsc.job = 3
-    elseif mumps.mumpsc.job ∈ [1] # if analyzed only, factorize and solve
-        mumps.mumpsc.job=5
-    elseif mumps.mumpsc.job ∈ [3,5,6] # is solved already, retrieve solution
+    if mumps.job ∈ [2,4] # if already factored, just solve
+        mumps.job = 3
+    elseif mumps.job ∈ [1] # if analyzed only, factorize and solve
+        mumps.job=5
+    elseif mumps.job ∈ [3,5,6] # is solved already, retrieve solution
         return nothing
     else # else analyze, factor, solve
-        mumps.mumpsc.job=6
+        mumps.job=6
     end
     invoke_mumps!(mumps)
     return nothing
@@ -106,13 +106,13 @@ function mumps_solve!(x::AbstractArray,A::AbstractArray,rhs::AbstractArray; kwar
 end
 function mumps_solve!(x::AbstractArray,mumps::Mumps,rhs::AbstractArray)
     provide_rhs!(mumps,rhs)
-    if mumps.mumpsc.job ∈ [2,4] # if already factored, just solve
-    elseif mumps.mumpsc.job ∈ [1] # if analyzed only, factorize and solve
-        mumps.mumpsc.job=5
-    elseif mumps.mumpsc.job ∈ [3,5,6] # is solved already, reset to solve only
-        mumps.mumpsc.job=2
+    if mumps.job ∈ [2,4] # if already factored, just solve
+    elseif mumps.job ∈ [1] # if analyzed only, factorize and solve
+        mumps.job=5
+    elseif mumps.job ∈ [3,5,6] # is solved already, reset to solve only
+        mumps.job=2
     else # else analyze, factor, solve
-        mumps.mumpsc.job=6
+        mumps.job=6
     end
     mumps_solve!(x,mumps)
 end
@@ -128,7 +128,7 @@ If only input is `mumps` must also have been provided `y`.
 See also: [`mumps_solve!`](@ref)
 """
 function mumps_solve(mumps::Mumps)
-    if mumps.mumpsc.job ∈ [3,5,6]
+    if mumps.job ∈ [3,5,6]
         x = get_sol(mumps)
     else
         x = get_rhs(mumps)
@@ -160,13 +160,13 @@ See also: [`mumps_factorize`](@ref)
 """
 function mumps_factorize!(mumps::Mumps)
     @assert has_matrix(mumps) "matrix not yet provided to mumps object"
-    if mumps.mumpsc.job ∈ [2,3,4,5,6] # already factored
+    if mumps.job ∈ [2,3,4,5,6] # already factored
         @warn "already factored"
         return nothing
-    elseif mumps.mumpsc.job ∈ [1] # if analyzed only, factorize
-        mumps.mumpsc.job=2
+    elseif mumps.job ∈ [1] # if analyzed only, factorize
+        mumps.job=2
     else # else analyze, factor
-        mumps.mumpsc.job=4
+        mumps.job=4
     end
     invoke_mumps!(mumps)
 end
@@ -205,12 +205,12 @@ See also: [`mumps_det`](@ref)
 """
 function mumps_det!(mumps::Mumps; discard=true)
     @assert has_matrix(mumps) "matrix not yet provided to mumps object"
-    if has_det(mumps) && mumps.mumpsc.job>1
+    if has_det(mumps) && mumps.job>1
         return nothing
     end
     set_icntl!(mumps,31,Int(discard))
     set_icntl!(mumps,33,1)
-    mumps.mumpsc.job>0 ? mumps.mumpsc.job=1 : nothing
+    mumps.job>0 ? mumps.job=1 : nothing
     mumps_factorize!(mumps)
 end
 """
@@ -242,14 +242,14 @@ See also: [`mumps_schur_complement`](@ref), [`get_schur_complement!`](@ref), [`g
 function mumps_schur_complement!(mumps::Mumps, schur_inds::AbstractArray{Int,1})
     @assert has_matrix(mumps) "matrix not yet provided to mumps object"
     set_schur_centralized_by_column!(mumps, schur_inds)
-    if mumps.mumpsc.job ∈ [1] # if analyzed only, factorize
-        mumps.mumpsc.job=2
+    if mumps.job ∈ [1] # if analyzed only, factorize
+        mumps.job=2
     else # else analyze, factor
-        mumps.mumpsc.job=4
+        mumps.job=4
     end
     invoke_mumps!(mumps)
 end
-mumps_schur_complement!(mumps::Mumps, x::SparseMatrixCSC) = mumps_schur_complement!(mumps,unique!(sort!(x.rowval)))
+mumps_schur_complement!(mumps::Mumps, x::SparseMatrixCSC) = mumps_schur_complement!(mumps,unique!(sort(x.rowval)))
 mumps_schur_complement!(mumps::Mumps, x::SparseVector) = mumps_schur_complement!(mumps,x.nzind)
 """
     mumps_schur_complement(A,schur_inds) -> S
@@ -287,12 +287,12 @@ function mumps_select_inv!(x::AbstractSparseArray,mumps::Mumps)
     set_icntl!(mumps,30,1)
     set_icntl!(mumps,20,3)
     provide_rhs!(mumps,x)
-    if mumps.mumpsc.job ∈ [2,4] # if already factored, just solve
-        mumps.mumpsc.job = 3
-    elseif mumps.mumpsc.job ∈ [1] # if analyzed only, factorize and solve
-        mumps.mumpsc.job=5
+    if mumps.job ∈ [2,4] # if already factored, just solve
+        mumps.job = 3
+    elseif mumps.job ∈ [1] # if analyzed only, factorize and solve
+        mumps.job=5
     else # else analyze, factor, solve
-        mumps.mumpsc.job=6
+        mumps.job=6
     end
     invoke_mumps!(mumps)
     get_rhs!(x,mumps)
@@ -338,7 +338,7 @@ See also: [`finalize`](@ref)
 function initialize!(mumps::Mumps)
     suppress_display!(mumps)
     mumps.finalized=false
-    mumps.mumpsc.job=-1
+    mumps.job=-1
     invoke_mumps!(mumps)
 end
 
@@ -357,14 +357,14 @@ function finalize!(mumps::Mumps)
 end
 function finalize_unsafe!(mumps::Mumps)
     mumps.finalized=true
-    mumps.mumpsc.job=-2
+    mumps.job=-2
     invoke_mumps_unsafe!(mumps)
 end
 
 
 function Base.:\(mumps::Mumps,y)
     suppress_display!(mumps)
-    if mumps.mumpsc.job < 2
+    if mumps.job < 2
         mumps_factorize!(mumps)
     end
     x = mumps_solve(mumps,y)
@@ -372,24 +372,24 @@ function Base.:\(mumps::Mumps,y)
 end
 function LinearAlgebra.ldiv!(mumps::Mumps,y)
     suppress_display!(mumps)
-    if mumps.mumpsc.job < 2
+    if mumps.job < 2
         mumps_factorize!(mumps)
     else
-        mumps.mumpsc.job=2
+        mumps.job=2
     end
     provide_rhs!(mumps,y)
     mumps_solve!(y,mumps)
 end
 function LinearAlgebra.ldiv!(x,mumps::Mumps,y)
     suppress_display!(mumps)
-    if mumps.mumpsc.job < 2
+    if mumps.job < 2
         mumps_factorize!(mumps)
     end
     mumps_solve!(x,mumps,y)
 end
 function LinearAlgebra.inv(mumps::Mumps)
     suppress_display!(mumps)
-    y = sparse(1:mumps.mumpsc.n,1:mumps.mumpsc.n,1:mumps.mumpsc.n,mumps.mumpsc.n,mumps.mumpsc.n)
+    y = sparse(1:mumps.n,1:mumps.n,1:mumps.n,mumps.n,mumps.n)
     mumps_select_inv!(y,mumps)
     finalize!(mumps)
     return y
