@@ -64,7 +64,7 @@ function invoke_mumps!(mumps::Mumps)
     invoke_mumps_unsafe!(mumps)
 end
 function check_finalized(mumps::Mumps)
-    if mumps.finalized
+    if mumps._finalized
         throw(ErrorException("Mumps object already finalized"))
     end
 end
@@ -180,7 +180,7 @@ function _provide_matrix_assembled_centralized!(mumps::Mumps{T},A::SparseMatrixC
     mumps.irn, mumps.jcn, mumps.a = pointer.((irn,jcn,a))
     mumps.n = A.n
     mumps.nnz = length(V)
-    append!(mumps.gc_haven,[Ref(irn),Ref(jcn),Ref(a)])
+    append!(mumps._gc_haven,[Ref(irn),Ref(jcn),Ref(a)])
     return nothing
 end
 function _provide_matrix_assembled_distributed!(mumps::Mumps{T},A::SparseMatrixCSC) where T
@@ -199,7 +199,7 @@ function _provide_matrix_elemental!(mumps::Mumps{T},A::Array) where T
         a_elt = convert.(T,A[:])
     end
     mumps.a_elt = pointer(a_elt)
-    append!(mumps.gc_haven,[Ref(eltptr),Ref(eltvar),Ref(a_elt)])
+    append!(mumps._gc_haven,[Ref(eltptr),Ref(eltvar),Ref(a_elt)])
     return nothing
 end
 
@@ -240,9 +240,9 @@ function provide_rhs_sparse!(mumps::Mumps{T},rhs::AbstractMatrix) where T
         y = fill(convert(T,NaN),prod(size(rhs)))
         mumps.rhs = pointer(y)
         mumps.lrhs = size(rhs,1)
-        push!(mumps.gc_haven,Ref(y))
+        push!(mumps._gc_haven,Ref(y))
     end
-    append!(mumps.gc_haven,[Ref(rhs_sparse),Ref(irhs_sparse),Ref(irhs_ptr)])
+    append!(mumps._gc_haven,[Ref(rhs_sparse),Ref(irhs_sparse),Ref(irhs_ptr)])
     return nothing
 end
 function provide_rhs_dense!(mumps::Mumps{T},rhs::AbstractMatrix) where T
@@ -250,7 +250,7 @@ function provide_rhs_dense!(mumps::Mumps{T},rhs::AbstractMatrix) where T
     mumps.rhs = pointer(y)
     mumps.lrhs = size(rhs,1)
     mumps.nrhs = size(rhs,2)
-    push!(mumps.gc_haven,Ref(y))
+    push!(mumps._gc_haven,Ref(y))
     return nothing
 end
 provide_rhs!(mumps::Mumps,rhs::AbstractVector) = provide_rhs!(mumps,repeat(rhs,1,1))
@@ -407,7 +407,7 @@ function set_schur_centralized_by_column!(mumps::Mumps{T},schur_inds::AbstractAr
     schur = Array{T}(undef,mumps.size_schur^2)
     mumps.schur = pointer(schur)
     set_icntl!(mumps,19,3)
-    append!(mumps.gc_haven,[Ref(listvar_schur),Ref(schur)])
+    append!(mumps._gc_haven,[Ref(listvar_schur),Ref(schur)])
 end
 
 
