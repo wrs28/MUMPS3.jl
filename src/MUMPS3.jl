@@ -38,15 +38,15 @@ SparseArrays
 
 function __init__()
     if haskey(ENV,"MUMPS_PREFIX")
-        global MUMPS_LIB_S = joinpath(ENV["MUMPS_PREFIX"],"lib/libsmumps.dylib")
-        global MUMPS_LIB_D = joinpath(ENV["MUMPS_PREFIX"],"lib/libdmumps.dylib")
-        global MUMPS_LIB_C = joinpath(ENV["MUMPS_PREFIX"],"lib/libcmumps.dylib")
-        global MUMPS_LIB_Z = joinpath(ENV["MUMPS_PREFIX"],"lib/libzmumps.dylib")
+        global MUMPS_LIB_S = joinpath(ENV["MUMPS_PREFIX"],"lib/libsmumps")
+        global MUMPS_LIB_D = joinpath(ENV["MUMPS_PREFIX"],"lib/libdmumps")
+        global MUMPS_LIB_C = joinpath(ENV["MUMPS_PREFIX"],"lib/libcmumps")
+        global MUMPS_LIB_Z = joinpath(ENV["MUMPS_PREFIX"],"lib/libzmumps")
     else
-        global MUMPS_LIB_S = "/usr/local/opt/brewsci-mumps/lib/libsmumps.dylib"
-        global MUMPS_LIB_D = "/usr/local/opt/brewsci-mumps/lib/libdmumps.dylib"
-        global MUMPS_LIB_C = "/usr/local/opt/brewsci-mumps/lib/libcmumps.dylib"
-        global MUMPS_LIB_Z = "/usr/local/opt/brewsci-mumps/lib/libzmumps.dylib"
+        global MUMPS_LIB_S = "/usr/local/opt/brewsci-mumps/lib/libsmumps"
+        global MUMPS_LIB_D = "/usr/local/opt/brewsci-mumps/lib/libdmumps"
+        global MUMPS_LIB_C = "/usr/local/opt/brewsci-mumps/lib/libcmumps"
+        global MUMPS_LIB_Z = "/usr/local/opt/brewsci-mumps/lib/libzmumps"
     end
     global LIB_S = dlopen(MUMPS_LIB_S)
     global LIB_D = dlopen(MUMPS_LIB_D)
