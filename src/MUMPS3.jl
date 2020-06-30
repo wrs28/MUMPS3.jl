@@ -38,10 +38,10 @@ SparseArrays
 
 function __init__()
     if haskey(ENV,"MUMPS_PREFIX")
-        global MUMPS_LIB_S = joinpath(ENV["MUMPS_PREFIX"],"lib/libsmumps")
-        global MUMPS_LIB_D = joinpath(ENV["MUMPS_PREFIX"],"lib/libdmumps")
-        global MUMPS_LIB_C = joinpath(ENV["MUMPS_PREFIX"],"lib/libcmumps")
-        global MUMPS_LIB_Z = joinpath(ENV["MUMPS_PREFIX"],"lib/libzmumps")
+        global MUMPS_LIB_S = joinpath(ENV["MUMPS_PREFIX"],"libsmumps")
+        global MUMPS_LIB_D = joinpath(ENV["MUMPS_PREFIX"],"libdmumps")
+        global MUMPS_LIB_C = joinpath(ENV["MUMPS_PREFIX"],"libcmumps")
+        global MUMPS_LIB_Z = joinpath(ENV["MUMPS_PREFIX"],"libzmumps")
     else
         global MUMPS_LIB_S = "/usr/local/opt/brewsci-mumps/lib/libsmumps"
         global MUMPS_LIB_D = "/usr/local/opt/brewsci-mumps/lib/libdmumps"
