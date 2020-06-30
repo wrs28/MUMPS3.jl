@@ -1,12 +1,12 @@
 # MUMPS3
 
-The MUMPS3 package provides a Julia interface with the [MUMPS 5.2.0](http://mumps.enseeiht.fr) parallel direct solver, used for solving `A*x=y` for square `A` (as well as some other functionality).
+The MUMPS3 package provides a Julia interface with the [MUMPS 5.3.3](http://mumps.enseeiht.fr) parallel direct solver, used for solving `A*x=y` for square `A` (as well as some other functionality).
 
 This package *does not* come with a distribution of MUMPS, and it is up to the user to provide a working MUMPS library (see MUMPS installation section).
 
 ## Installation
 
-Two things must be installed: MUMPS3.jl and [MUMPS 5.2.0](http://mumps.enseeiht.fr).
+Two things must be installed: MUMPS3.jl and [MUMPS 5.3.3](http://mumps.enseeiht.fr).
 
 #### Installing MUMPS3.jl
 
